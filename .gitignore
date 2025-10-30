@@ -53,3 +53,6 @@ dkms.conf
 
 build
 vcpkg_installed
+
+# For now: ignoring lox files, as we use them for testing
+*.lox
