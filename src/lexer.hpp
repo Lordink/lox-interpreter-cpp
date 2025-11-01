@@ -41,8 +41,13 @@ DECLARE_SIMPLE_TOKEN(LeftParen, '(', "LEFT_PAREN");
 DECLARE_SIMPLE_TOKEN(RightParen, ')', "RIGHT_PAREN");
 DECLARE_SIMPLE_TOKEN(LeftBrace, '{', "LEFT_BRACE");
 DECLARE_SIMPLE_TOKEN(RightBrace, '}', "RIGHT_BRACE");
+DECLARE_SIMPLE_TOKEN(Star, '*', "STAR");
+DECLARE_SIMPLE_TOKEN(Dot, '.', "DOT");
+DECLARE_SIMPLE_TOKEN(Comma, ',', "COMMA");
+DECLARE_SIMPLE_TOKEN(Minus, '-', "MINUS");
+DECLARE_SIMPLE_TOKEN(Plus, '+', "PLUS");
+DECLARE_SIMPLE_TOKEN(Semicol, ';', "SEMICOLON");
 
-constexpr bool DEBUG_LOG_LEXER = false;
 
 /// Writes token's kind to @out, if that token matches @c
 template<Token T>
@@ -54,12 +59,32 @@ bool write_kind_if_matches(char const &c, string &out) {
     return false;
 }
 
+// Comptime template-level list of tokens,
+// hence the struct is 0-sized
 template<Token... Ts>
-bool write_kind_if_matches_any(char const &c, string &out) {
+struct TokenList {};
+
+template<Token... Ts>
+bool write_kind_if_matches_any(TokenList<Ts...> _tlist, char const &c, string &out) {
     return ( write_kind_if_matches<Ts>(c, out) || ...);
 }
 
 static const unordered_set<char> ignored_chars = {' ', '\n'};
+constexpr bool DEBUG_LOG_LEXER = false;
+
+
+using AllSimpleTokens = TokenList<
+    LeftParen,
+    RightParen,
+    LeftBrace,
+    RightBrace,
+    Star,
+    Dot,
+    Comma,
+    Minus,
+    Plus,
+    Semicol
+>;
 
 [[nodiscard]]
 inline vector<string> lex(const string &file_contents) {
@@ -74,7 +99,7 @@ inline vector<string> lex(const string &file_contents) {
     for (char const &c: file_contents) {
         dbg(format("Checking {}", c));
 
-        if (write_kind_if_matches_any<LeftParen, RightParen, LeftBrace, RightBrace>(c, token)) {
+        if (write_kind_if_matches_any(AllSimpleTokens(), c, token)) {
             token += format(" {} null", c);
             tokens.push_back(token);
         } else if (ignored_chars.contains(c)) {
