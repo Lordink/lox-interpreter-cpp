@@ -1,10 +1,11 @@
-#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <format>
 #include <vector>
+
+#include "lexer.hpp"
 
 using std::string;
 using std::cout;
@@ -15,7 +16,6 @@ using std::format;
 using std::vector;
 
 string read_file_contents(const string& filename);
-vector<string> lex(const string& file_contents);
 
 int main(const int argc, char *argv[]) {
     // Disable output buffering
@@ -58,39 +58,4 @@ string read_file_contents(const string& filename) {
     file.close();
 
     return buffer.str();
-}
-
-
-constexpr bool DEBUG_LOG_LEXER = false;
-
-[[nodiscard]]
-vector<string> lex(const string& file_contents) {
-    string token;
-    vector<string> tokens;
-    static const auto dbg = [](auto const& text) {
-        if constexpr (DEBUG_LOG_LEXER) {
-            cout << text << endl;
-        }
-    };
-
-    for (char const &c : file_contents) {
-        dbg(format("Checking {}", c));
-
-        switch (c) {
-            case '(':
-                token = "LEFT_PAREN";
-                break;
-            case ')':
-                token = "RIGHT_PAREN";
-                break;
-            default:
-                // Ignoring unsupported output
-                break;
-        }
-        token += format(" {} null", c);
-        tokens.push_back(token);
-    }
-    tokens.push_back("EOF  null");
-
-    return tokens;
 }
