@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string>
 #include <format>
+#include <vector>
 
 using std::string;
 using std::cout;
@@ -11,16 +12,15 @@ using std::cerr;
 using std::cin;
 using std::endl;
 using std::format;
+using std::vector;
 
 string read_file_contents(const string& filename);
+vector<string> lex(const string& file_contents);
 
 int main(const int argc, char *argv[]) {
     // Disable output buffering
     cout << std::unitbuf;
     cerr << std::unitbuf;
-
-    // You can use print statements as follows for debugging, they'll be visible when running tests.
-    cerr << "Logs from your program will appear here!" << endl;
 
     if (argc < 3) {
         cerr << "Usage: ./your_program tokenize <filename>" << endl;
@@ -31,13 +31,11 @@ int main(const int argc, char *argv[]) {
 
     if (command == "tokenize") {
         string file_contents = read_file_contents(argv[2]);
-        
-        if (!file_contents.empty()) {
-            cerr << "Scanner not implemented" << endl;
-            return 1;
+
+        const auto tokens = lex(file_contents);
+        for (const auto& tok : tokens) {
+            cout << format("{}\n", tok);
         }
-        // TODO Placeholder, replace this line when implementing the scanner
-        cout << "EOF  null" << std::endl;
 
     } else {
         cerr << "Unknown command: " << command << endl;
@@ -47,6 +45,7 @@ int main(const int argc, char *argv[]) {
     return 0;
 }
 
+[[nodiscard]]
 string read_file_contents(const string& filename) {
     std::ifstream file(filename);
     if (!file.is_open()) {
@@ -59,4 +58,39 @@ string read_file_contents(const string& filename) {
     file.close();
 
     return buffer.str();
+}
+
+
+constexpr bool DEBUG_LOG_LEXER = false;
+
+[[nodiscard]]
+vector<string> lex(const string& file_contents) {
+    string token;
+    vector<string> tokens;
+    static const auto dbg = [](auto const& text) {
+        if constexpr (DEBUG_LOG_LEXER) {
+            cout << text << endl;
+        }
+    };
+
+    for (char const &c : file_contents) {
+        dbg(format("Checking {}", c));
+
+        switch (c) {
+            case '(':
+                token = "LEFT_PAREN";
+                break;
+            case ')':
+                token = "RIGHT_PAREN";
+                break;
+            default:
+                // Ignoring unsupported output
+                break;
+        }
+        token += format(" {} null", c);
+        tokens.push_back(token);
+    }
+    tokens.push_back("EOF  null");
+
+    return tokens;
 }
