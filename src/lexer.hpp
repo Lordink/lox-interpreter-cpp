@@ -18,39 +18,55 @@ using std::vector;
 using std::string_view;
 using std::unordered_set;
 
+// TODO EOF as a token
 
 template<typename T>
 concept Token = requires
 {
-    { T::LEXEME } -> std::convertible_to<char>;
     { T::KIND } -> std::convertible_to<string_view>;
-    // Assert that they are constexpr
-    typename std::integral_constant<char, T::LEXEME>;
-    // Can't use integral_constant on a string_view
+    // Assert that its constexpr
+    // (can't use integral_constant on a string_view)
     requires T::KIND.size() > 0;
 };
 
-#define DECLARE_SIMPLE_TOKEN(_name, _lexeme, _kind) \
+// Character (one char)-based token, like LEFT_PAREN or PLUS
+template<typename T>
+concept CharToken = Token<T> && requires
+{
+    { T::LEXEME } -> std::convertible_to<char>;
+    // Assert that its constexpr
+    typename std::integral_constant<char, T::LEXEME>;
+};
+
+#define CHAR_TOKEN(_name, _lexeme, _kind) \
     struct _name { \
         static constexpr char LEXEME = _lexeme; \
         static constexpr string_view KIND = _kind; \
     }; \
-    static_assert(Token<_name>);
+    static_assert(CharToken<_name>);
 
-DECLARE_SIMPLE_TOKEN(LeftParen, '(', "LEFT_PAREN");
-DECLARE_SIMPLE_TOKEN(RightParen, ')', "RIGHT_PAREN");
-DECLARE_SIMPLE_TOKEN(LeftBrace, '{', "LEFT_BRACE");
-DECLARE_SIMPLE_TOKEN(RightBrace, '}', "RIGHT_BRACE");
-DECLARE_SIMPLE_TOKEN(Star, '*', "STAR");
-DECLARE_SIMPLE_TOKEN(Dot, '.', "DOT");
-DECLARE_SIMPLE_TOKEN(Comma, ',', "COMMA");
-DECLARE_SIMPLE_TOKEN(Minus, '-', "MINUS");
-DECLARE_SIMPLE_TOKEN(Plus, '+', "PLUS");
-DECLARE_SIMPLE_TOKEN(Semicol, ';', "SEMICOLON");
+CHAR_TOKEN(LeftParen,  '(', "LEFT_PAREN");
+CHAR_TOKEN(RightParen, ')', "RIGHT_PAREN");
+CHAR_TOKEN(LeftBrace,  '{', "LEFT_BRACE");
+CHAR_TOKEN(RightBrace, '}', "RIGHT_BRACE");
+CHAR_TOKEN(Star,       '*', "STAR");
+CHAR_TOKEN(Dot,        '.', "DOT");
+CHAR_TOKEN(Comma,      ',', "COMMA");
+CHAR_TOKEN(Minus,      '-', "MINUS");
+CHAR_TOKEN(Plus,       '+', "PLUS");
+CHAR_TOKEN(Semicol,    ';', "SEMICOLON");
 
+
+// EOF is a special token we nonetheless use
+struct EndOfFile {
+    static constexpr string_view KIND = "EOF";
+};
+// Keeping here for consistency. Won't be needed later,
+// hopefully, when we just use some function to parse all the lex output tokens
+static_assert(Token<EndOfFile>);
 
 /// Writes token's kind to @out, if that token matches @c
-template<Token T>
+template<CharToken T>
 bool write_kind_if_matches(char const &c, string &out) {
     if (c == T::LEXEME) {
         out = T::KIND;
@@ -64,7 +80,9 @@ bool write_kind_if_matches(char const &c, string &out) {
 template<Token... Ts>
 struct TokenList {};
 
-template<Token... Ts>
+// Accepts a tokenList, but is templated over CharTokens
+// That works, since they are a subtype
+template<CharToken... Ts>
 bool write_kind_if_matches_any(TokenList<Ts...> _tlist, char const &c, string &out) {
     return ( write_kind_if_matches<Ts>(c, out) || ...);
 }
@@ -73,7 +91,7 @@ static const unordered_set<char> ignored_chars = {' ', '\n'};
 constexpr bool DEBUG_LOG_LEXER = false;
 
 
-using AllSimpleTokens = TokenList<
+using AllCharTokens = TokenList<
     LeftParen,
     RightParen,
     LeftBrace,
@@ -99,7 +117,7 @@ inline vector<string> lex(const string &file_contents) {
     for (char const &c: file_contents) {
         dbg(format("Checking {}", c));
 
-        if (write_kind_if_matches_any(AllSimpleTokens(), c, token)) {
+        if (write_kind_if_matches_any(AllCharTokens(), c, token)) {
             token += format(" {} null", c);
             tokens.push_back(token);
         } else if (ignored_chars.contains(c)) {
