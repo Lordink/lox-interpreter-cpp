@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <unordered_set>
 #include <variant>
+#include <expected>
 
 using std::string;
 using std::cout;
@@ -19,6 +20,7 @@ using std::vector;
 using std::string_view;
 using std::unordered_set;
 using std::variant;
+using std::expected;
 
 
 template<typename T>
@@ -131,8 +133,6 @@ namespace impl {
         // TODO value when toks have values
         return format("{} {} null", T::KIND, T::LEXEME);
     }
-
-
 }
 
 
@@ -146,26 +146,41 @@ static const unordered_set<char> ignored_chars = {' ', '\n'};
 constexpr bool DEBUG_LOG_LEXER = false;
 
 [[nodiscard]]
-inline vector<TokenVariant> lex(const string &file_contents) {
+inline vector<expected<TokenVariant, string>> lex(
+    const string &file_contents,
+    size_t& out_num_errs)
+{
     using namespace impl;
 
-    TokenVariant token;
-    vector<TokenVariant> tokens;
     static const auto dbg = [](auto const &text) {
         if constexpr (DEBUG_LOG_LEXER) {
             cout << text << endl;
         }
     };
+    TokenVariant token;
+    vector<expected<TokenVariant, string>> tokens;
+    // Keeping track for print errors
+    size_t line_num = 1;
 
     for (char const &c: file_contents) {
         dbg(format("Checking {}", c));
 
         if (set_if_matches_any(AllCharTokens(), c, token)) {
             tokens.push_back(token);
+        } else if (c == '\n') {
+            // New line symbol. Ignore, but bump line_num to keep track
+            line_num += 1;
         } else if (ignored_chars.contains(c)) {
             // Do nothing if we run into ignored characters
         } else {
-            throw std::runtime_error("Unrecognized token");
+            // Failure case. Add as a string.
+            const string err_msg = format(
+                "[line {}] Error: Unexpected character: {}",
+                line_num,
+                c
+            );
+            tokens.emplace_back(std::unexpected(err_msg));
+            out_num_errs += 1;
         }
     }
     tokens.emplace_back(EndOfFile()); // NOLINT(*-use-emplace)
