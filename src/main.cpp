@@ -34,7 +34,7 @@ int main(const int argc, char *argv[]) {
 
         const auto tokens = lex(file_contents);
         for (const auto& tok : tokens) {
-            cout << format("{}\n", tok);
+            print_token_variant(tok);
         }
 
     } else {
