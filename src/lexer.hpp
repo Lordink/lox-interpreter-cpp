@@ -184,6 +184,8 @@ inline std::vector<std::expected<TokenVariant, std::string>> lex(
         dbg(impl::format("Checking {}", c));
 
         // Are we building up an ==?
+        // TODO could simplify this code by removing last and replacing,
+        // which is slower but the code would be less tangled & fragile
         if (state.last_char_was_eq) {
             if (c == '=') {
                 state.last_char_was_eq = false;
@@ -220,6 +222,13 @@ inline std::vector<std::expected<TokenVariant, std::string>> lex(
             out_num_errs += 1;
         }
     }
+
+    // Needs the extra check cause we cache it on parsing, not
+    // pushing the token right away
+    if (state.last_char_was_eq) {
+        tokens.push_back(Assign());
+    }
+
     tokens.emplace_back(EndOfFile());
 
     return tokens;
