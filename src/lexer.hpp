@@ -48,6 +48,7 @@ CHAR_TOKEN(Comma, ',', "COMMA");
 CHAR_TOKEN(Minus, '-', "MINUS");
 CHAR_TOKEN(Plus, '+', "PLUS");
 CHAR_TOKEN(Semicol, ';', "SEMICOLON");
+CHAR_TOKEN(Assign, '=', "EQUAL");
 
 
 // EOF is a special token we nonetheless use
@@ -56,6 +57,11 @@ struct EndOfFile {
 };
 // Keeping here for consistency and to avoid surprises later
 static_assert(Token<EndOfFile>);
+
+// ==
+struct Equals {
+    static constexpr std::string_view KIND = "EQUAL_EQUAL";
+};
 
 using TokenVariant = std::variant<
     LeftParen,
@@ -68,6 +74,8 @@ using TokenVariant = std::variant<
     Minus,
     Plus,
     Semicol,
+    Assign,
+    Equals,
     EndOfFile
 >;
 
@@ -107,7 +115,7 @@ namespace impl {
         return ( set_if_matches<Ts>(c, out) || ... );
     }
 
-
+    // Excludes =, since that has a special case of building up ==
     using AllCharTokens = TokenList<
         LeftParen,
         RightParen,
@@ -132,6 +140,12 @@ namespace impl {
         // TODO value when toks have values
         return format("{} {} null", T::KIND, T::LEXEME);
     }
+
+    template<>
+    inline string stringify_token(const Equals& token) {
+        // TODO value when toks have values
+        return format("{} {} null", Equals::KIND, "==");
+    }
 }
 
 
@@ -144,6 +158,12 @@ inline void print_token_variant(const TokenVariant &tok) {
 static const std::unordered_set<char> ignored_chars = {' '};
 constexpr bool DEBUG_LOG_LEXER = false;
 
+struct LexerState {
+    // Did we cache "=" as last char?
+    bool last_char_was_eq = false;
+    size_t line_num = 1;
+};
+
 [[nodiscard]]
 inline std::vector<std::expected<TokenVariant, std::string>> lex(
     const std::string &file_contents,
@@ -154,26 +174,46 @@ inline std::vector<std::expected<TokenVariant, std::string>> lex(
             println("{}", text);
         }
     };
+
     TokenVariant token;
     std::vector<std::expected<TokenVariant, std::string>> tokens;
     // Keeping track for print errors
-    size_t line_num = 1;
+    LexerState state;
 
     for (char const &c: file_contents) {
         dbg(impl::format("Checking {}", c));
 
+        // Are we building up an ==?
+        if (state.last_char_was_eq) {
+            if (c == '=') {
+                state.last_char_was_eq = false;
+                tokens.push_back(Equals());
+                continue;
+            } else {
+                // New char is not eq, but we've cached that last one is
+                // Push last one as = and keep going with this one
+                state.last_char_was_eq = false;
+                tokens.push_back(Assign());
+            }
+        }
+
         if (impl::set_if_matches_any(impl::AllCharTokens(), c, token)) {
             tokens.push_back(token);
         } else if (c == '\n') {
-            // New line symbol. Ignore, but bump line_num to keep track
-            line_num += 1;
+            state.line_num += 1;
+            // New line resets this
+            state.last_char_was_eq = false;
         } else if (ignored_chars.contains(c)) {
             // Do nothing if we run into ignored characters
+        } else if (c == '=') {
+            // We've already handled the case where last char was eq
+            // Cache that current is, and keep going
+            state.last_char_was_eq = true;
         } else {
             // Failure case. Add as a string.
             const std::string err_msg = std::format(
                 "[line {}] Error: Unexpected character: {}",
-                line_num,
+                state.line_num,
                 c
             );
             tokens.emplace_back(std::unexpected(err_msg));
