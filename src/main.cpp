@@ -2,19 +2,12 @@
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <format>
-#include <vector>
 #include <print>
 
 #include "lexer.hpp"
 
 using std::string;
-using std::cout;
-using std::cerr;
 using std::cin;
-using std::endl;
-using std::format;
-using std::vector;
 using std::println;
 
 string read_file_contents(const string& filename);
@@ -23,8 +16,8 @@ constexpr int LEXICAL_ERR_RETURN_CODE = 65;
 
 int main(const int argc, char *argv[]) {
     // Disable output buffering
-    cout << std::unitbuf;
-    cerr << std::unitbuf;
+    std::cout << std::unitbuf;
+    std::cerr << std::unitbuf;
 
     if (argc < 3) {
         println(stderr, "Usage: ./your_program tokenize <filename>");
@@ -51,7 +44,7 @@ int main(const int argc, char *argv[]) {
             return LEXICAL_ERR_RETURN_CODE;
         }
     } else {
-        cerr << "Unknown command: " << command << endl;
+        println(stderr, "Unknown command: {}", command);
         return 1;
     }
 
@@ -62,7 +55,7 @@ int main(const int argc, char *argv[]) {
 string read_file_contents(const string& filename) {
     std::ifstream file(filename);
     if (!file.is_open()) {
-        cerr << format("Error reading file: {}\n", filename);
+        println(stderr, "Error reading file: {}", filename);
         std::exit(1);
     }
 

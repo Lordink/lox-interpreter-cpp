@@ -11,22 +11,12 @@
 #include <unordered_set>
 #include <variant>
 #include <expected>
-
-using std::string;
-using std::cout;
-using std::endl;
-using std::format;
-using std::vector;
-using std::string_view;
-using std::unordered_set;
-using std::variant;
-using std::expected;
-
+#include <print>
 
 template<typename T>
 concept Token = requires
 {
-    { T::KIND } -> std::convertible_to<string_view>;
+    { T::KIND } -> std::convertible_to<std::string_view>;
     // Assert that its constexpr
     // (can't use integral_constant on a string_view)
     requires T::KIND.size() > 0;
@@ -44,7 +34,7 @@ concept CharToken = Token<T> && requires
 #define CHAR_TOKEN(_name, _lexeme, _kind) \
     struct _name { \
         static constexpr char LEXEME = _lexeme; \
-        static constexpr string_view KIND = _kind; \
+        static constexpr std::string_view KIND = _kind; \
     }; \
     static_assert(CharToken<_name>);
 
@@ -62,11 +52,9 @@ CHAR_TOKEN(Semicol, ';', "SEMICOLON");
 
 // EOF is a special token we nonetheless use
 struct EndOfFile {
-    static constexpr string_view KIND = "EOF";
+    static constexpr std::string_view KIND = "EOF";
 };
-
-// Keeping here for consistency. Won't be needed later,
-// hopefully, when we just use some function to parse all the lex output tokens
+// Keeping here for consistency and to avoid surprises later
 static_assert(Token<EndOfFile>);
 
 using TokenVariant = std::variant<
@@ -85,6 +73,17 @@ using TokenVariant = std::variant<
 
 // Template functions built for internal use
 namespace impl {
+    using std::string;
+    using std::cout;
+    using std::endl;
+    using std::format;
+    using std::vector;
+    using std::string_view;
+    using std::unordered_set;
+    using std::variant;
+    using std::expected;
+    using std::println;
+
     /// Writes token's kind to @out, if that token matches @c
     template<CharToken T>
     bool set_if_matches(char const &c, TokenVariant &out) {
@@ -138,34 +137,32 @@ namespace impl {
 
 inline void print_token_variant(const TokenVariant &tok) {
     std::visit([](const auto &token) {
-        cout << impl::stringify_token(token) << endl;
+        std::println("{}", impl::stringify_token(token));
     }, tok);
 }
 
-static const unordered_set<char> ignored_chars = {' ', '\n'};
+static const std::unordered_set<char> ignored_chars = {' '};
 constexpr bool DEBUG_LOG_LEXER = false;
 
 [[nodiscard]]
-inline vector<expected<TokenVariant, string>> lex(
-    const string &file_contents,
+inline std::vector<std::expected<TokenVariant, std::string>> lex(
+    const std::string &file_contents,
     size_t& out_num_errs)
 {
-    using namespace impl;
-
     static const auto dbg = [](auto const &text) {
         if constexpr (DEBUG_LOG_LEXER) {
-            cout << text << endl;
+            println("{}", text);
         }
     };
     TokenVariant token;
-    vector<expected<TokenVariant, string>> tokens;
+    std::vector<std::expected<TokenVariant, std::string>> tokens;
     // Keeping track for print errors
     size_t line_num = 1;
 
     for (char const &c: file_contents) {
-        dbg(format("Checking {}", c));
+        dbg(impl::format("Checking {}", c));
 
-        if (set_if_matches_any(AllCharTokens(), c, token)) {
+        if (impl::set_if_matches_any(impl::AllCharTokens(), c, token)) {
             tokens.push_back(token);
         } else if (c == '\n') {
             // New line symbol. Ignore, but bump line_num to keep track
@@ -174,7 +171,7 @@ inline vector<expected<TokenVariant, string>> lex(
             // Do nothing if we run into ignored characters
         } else {
             // Failure case. Add as a string.
-            const string err_msg = format(
+            const std::string err_msg = std::format(
                 "[line {}] Error: Unexpected character: {}",
                 line_num,
                 c
@@ -183,7 +180,7 @@ inline vector<expected<TokenVariant, string>> lex(
             out_num_errs += 1;
         }
     }
-    tokens.emplace_back(EndOfFile()); // NOLINT(*-use-emplace)
+    tokens.emplace_back(EndOfFile());
 
     return tokens;
 }
