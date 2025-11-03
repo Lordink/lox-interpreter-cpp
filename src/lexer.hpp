@@ -1,12 +1,10 @@
 #pragma once
-/*
+/**
  * Lexer for the Lox interpreter
  * Using Concepts and templates for a lot of things to
  * avoid dyn dispatch and relegate as much to comptime as possible.
  * (mainly as an exercise)
- */
-
-// TODO move lexing to lookahead approach
+ **/
 
 #include <iostream>
 #include <string>
@@ -167,7 +165,6 @@ namespace impl {
         return format("{} {} null", Equals::KIND, "==");
     }
 
-    // Excludes =, since that has a special case of building up ==
     using AllCharTokens = TokenList<
         LeftParen,
         RightParen,
@@ -179,6 +176,7 @@ namespace impl {
         Minus,
         Plus,
         Semicol,
+        Assign,
         Bang
     >;
 }
@@ -195,7 +193,6 @@ constexpr bool DEBUG_LOG_LEXER = false;
 
 struct LexerState {
     // Did we cache "=" as last char?
-    bool last_char_was_eq = false;
     size_t line_num = 1;
 };
 
@@ -215,22 +212,24 @@ inline std::vector<std::expected<TokenVariant, std::string>> lex(
     // Keeping track for print errors
     LexerState state;
 
-    for (char const &c: file_contents) {
+    auto it = file_contents.begin();
+    while (it != file_contents.end()) {
+        const char& c = *it;
         dbg(impl::format("Checking {}", c));
 
-        // Are we building up an ==?
-        // TODO could simplify this code by removing last and replacing,
-        // which is slower but the code would be less tangled & fragile
-        if (state.last_char_was_eq) {
-            if (c == '=') {
-                state.last_char_was_eq = false;
-                tokens.push_back(Equals());
-                continue;
-            } else {
-                // New char is not eq, but we've cached that last one is
-                // Push last one as = and keep going with this one
-                state.last_char_was_eq = false;
-                tokens.push_back(Assign());
+        // TODO generate this code instead of manual checks,
+        // this naturally doesn't scale (written just to verify the idea)
+        if (Equals::LEXEME.starts_with(c)) {
+            if (it + 1 != file_contents.end()) {
+                // TODO building this string here is potentially quite slow
+                const std::string full_tok = std::format("{}{}", c, *(it + 1));
+                if (full_tok == Equals::LEXEME) {
+                    // This char and next char form ==
+                    // So we push Equals and advance by 2
+                    tokens.push_back(Equals());
+                    it += 2;
+                    continue;
+                }
             }
         }
 
@@ -238,14 +237,8 @@ inline std::vector<std::expected<TokenVariant, std::string>> lex(
             tokens.push_back(token);
         } else if (c == '\n') {
             state.line_num += 1;
-            // New line resets this
-            state.last_char_was_eq = false;
         } else if (ignored_chars.contains(c)) {
             // Do nothing if we run into ignored characters
-        } else if (c == '=') {
-            // We've already handled the case where last char was eq
-            // Cache that current is, and keep going
-            state.last_char_was_eq = true;
         } else {
             // Failure case. Add as a string.
             const std::string err_msg = std::format(
@@ -256,12 +249,8 @@ inline std::vector<std::expected<TokenVariant, std::string>> lex(
             tokens.emplace_back(std::unexpected(err_msg));
             out_num_errs += 1;
         }
-    }
 
-    // Needs the extra check cause we cache it on parsing, not
-    // pushing the token right away
-    if (state.last_char_was_eq) {
-        tokens.push_back(Assign());
+        ++it;
     }
 
     tokens.emplace_back(EndOfFile());
