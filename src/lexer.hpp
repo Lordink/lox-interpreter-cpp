@@ -1,7 +1,12 @@
 #pragma once
 /*
  * Lexer for the Lox interpreter
+ * Using Concepts and templates for a lot of things to
+ * avoid dyn dispatch and relegate as much to comptime as possible.
+ * (mainly as an exercise)
  */
+
+// TODO move lexing to lookahead approach
 
 #include <iostream>
 #include <string>
@@ -13,6 +18,8 @@
 #include <expected>
 #include <print>
 
+// "Base" concept for a token, i.e. smth that has a kind
+// e.g. "STAR", "DOT" or "LEFT_PAREN"
 template<typename T>
 concept Token = requires
 {
@@ -38,6 +45,30 @@ concept CharToken = Token<T> && requires
     }; \
     static_assert(CharToken<_name>);
 
+
+
+// Multi-char token.
+// Could just make all CharTokens StrTokens, but
+// would lose on some perf and simplicity (arguable)
+template<typename T>
+concept StrToken = Token<T> && requires
+{
+    {T::LEXEME} -> std::convertible_to<std::string_view>;
+    // Make sure it's bigger than 1 char, cause in that case it would just
+    // be a CharToken innit
+    requires T::LEXEME.size() > 1;
+};
+
+
+#define STR_TOKEN(_name, _lexeme, _kind) \
+    struct _name { \
+        static constexpr std::string_view LEXEME = _lexeme; \
+        static constexpr std::string_view KIND = _kind; \
+    }; \
+    static_assert(StrToken<_name>);
+
+
+
 CHAR_TOKEN(LeftParen, '(', "LEFT_PAREN");
 CHAR_TOKEN(RightParen, ')', "RIGHT_PAREN");
 CHAR_TOKEN(LeftBrace, '{', "LEFT_BRACE");
@@ -49,6 +80,10 @@ CHAR_TOKEN(Minus, '-', "MINUS");
 CHAR_TOKEN(Plus, '+', "PLUS");
 CHAR_TOKEN(Semicol, ';', "SEMICOLON");
 CHAR_TOKEN(Assign, '=', "EQUAL");
+CHAR_TOKEN(Bang, '!', "BANG");
+
+STR_TOKEN(Equals, "==", "EQUAL_EQUAL");
+STR_TOKEN(NotEquals, "!=", "BANG_EQUAL");
 
 
 // EOF is a special token we nonetheless use
@@ -58,10 +93,6 @@ struct EndOfFile {
 // Keeping here for consistency and to avoid surprises later
 static_assert(Token<EndOfFile>);
 
-// ==
-struct Equals {
-    static constexpr std::string_view KIND = "EQUAL_EQUAL";
-};
 
 using TokenVariant = std::variant<
     LeftParen,
@@ -75,7 +106,9 @@ using TokenVariant = std::variant<
     Plus,
     Semicol,
     Assign,
+    Bang,
     Equals,
+    NotEquals,
     EndOfFile
 >;
 
@@ -115,19 +148,6 @@ namespace impl {
         return ( set_if_matches<Ts>(c, out) || ... );
     }
 
-    // Excludes =, since that has a special case of building up ==
-    using AllCharTokens = TokenList<
-        LeftParen,
-        RightParen,
-        LeftBrace,
-        RightBrace,
-        Star,
-        Dot,
-        Comma,
-        Minus,
-        Plus,
-        Semicol
-    >;
 
     template<Token T>
     string stringify_token(const T &token) {
@@ -146,6 +166,21 @@ namespace impl {
         // TODO value when toks have values
         return format("{} {} null", Equals::KIND, "==");
     }
+
+    // Excludes =, since that has a special case of building up ==
+    using AllCharTokens = TokenList<
+        LeftParen,
+        RightParen,
+        LeftBrace,
+        RightBrace,
+        Star,
+        Dot,
+        Comma,
+        Minus,
+        Plus,
+        Semicol,
+        Bang
+    >;
 }
 
 
