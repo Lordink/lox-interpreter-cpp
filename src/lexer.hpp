@@ -159,10 +159,10 @@ namespace impl {
         return format("{} {} null", T::KIND, T::LEXEME);
     }
 
-    template<>
-    inline string stringify_token(const Equals& token) {
+    template<StrToken T>
+    inline string stringify_token(const T& token) {
         // TODO value when toks have values
-        return format("{} {} null", Equals::KIND, "==");
+        return format("{} {} null", T::KIND, T::LEXEME);
     }
 
     using AllCharTokens = TokenList<
@@ -227,6 +227,18 @@ inline std::vector<std::expected<TokenVariant, std::string>> lex(
                     // This char and next char form ==
                     // So we push Equals and advance by 2
                     tokens.push_back(Equals());
+                    it += 2;
+                    continue;
+                }
+            }
+        } else if (NotEquals::LEXEME.starts_with(c)) {
+            if (it + 1 != file_contents.end()) {
+                // TODO building this string here is potentially quite slow
+                const std::string full_tok = std::format("{}{}", c, *(it + 1));
+                if (full_tok == NotEquals::LEXEME) {
+                    // This char and next char form ==
+                    // So we push Equals and advance by 2
+                    tokens.push_back(NotEquals());
                     it += 2;
                     continue;
                 }
