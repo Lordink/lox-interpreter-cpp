@@ -220,6 +220,11 @@ inline std::vector<std::expected<TokenVariant, std::string>> lex(
         // TODO generate this code instead of manual checks,
         // this naturally doesn't scale (written just to verify the idea)
         if (Equals::LEXEME.starts_with(c)) {
+            // auto inner_it = it;
+            // auto idx = 0;
+            // while (inner_it != file_contents.end()) {
+            //     //todo here
+            // }
             if (it + 1 != file_contents.end()) {
                 // TODO building this string here is potentially quite slow
                 const std::string full_tok = std::format("{}{}", c, *(it + 1));
