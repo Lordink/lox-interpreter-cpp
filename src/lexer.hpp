@@ -151,13 +151,12 @@ using TokenVec = std::vector<std::expected<TokenVariant, std::string>>;
 // If the token matches TTok's lexeme - we advance the it iterator accordingly,
 // and add the token to tokens
 template <StrToken TTok>
+[[nodiscard]]
 inline bool match_str_tok(TokenVec& tokens, std::string::const_iterator& it,
-                          std::string const& str) {
+                          const size_t remaining_len) {
     if (TTok::LEXEME.starts_with(*it)) {
-        auto inner_it = it;
         constexpr size_t tok_len = TTok::LEXEME.size();
-        if (const size_t remaining_len = std::distance(it, str.end());
-            remaining_len >= tok_len) {
+        if (remaining_len >= tok_len) {
             const auto substr = std::string(it, it + tok_len);
             if (substr == TTok::LEXEME) {
                 tokens.push_back(TTok());
@@ -172,9 +171,11 @@ inline bool match_str_tok(TokenVec& tokens, std::string::const_iterator& it,
 
 
 template <StrToken... Ts>
-bool match_str_toks(TokenList<Ts...> tlist, TokenVec& tokens, std::string::const_iterator& it,
+[[nodiscard]]
+constexpr bool match_str_toks(TokenList<Ts...> tlist, TokenVec& tokens, std::string::const_iterator& it,
                             std::string const& str) {
-    return (match_str_tok<Ts>(tokens, it, str) || ...);
+    const size_t remaining_len = std::distance(it, str.end());
+    return (match_str_tok<Ts>(tokens, it, remaining_len) || ...);
 }
 
 } // namespace impl
