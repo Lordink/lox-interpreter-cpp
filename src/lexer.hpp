@@ -222,6 +222,7 @@ inline impl::TokenVec lex(const std::string& file_contents, size_t& out_num_errs
             // increment one last time to drop us to the next line
             if (it != file_contents.end()) {
                 ++it;
+                state.line_num += 1;
             }
             continue;
         }
