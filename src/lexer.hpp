@@ -187,7 +187,7 @@ inline void print_token_variant(const TokenVariant& tok) {
         tok);
 }
 
-static const std::unordered_set<char> ignored_chars = {' '};
+static const std::unordered_set<char> ignored_chars = {' ', '\t', '\r'};
 constexpr bool DEBUG_LOG_LEXER = false;
 
 struct LexerState {
