@@ -73,6 +73,7 @@ CHAR_TOKEN(Assign, '=', "EQUAL");
 CHAR_TOKEN(Bang, '!', "BANG");
 CHAR_TOKEN(Less, '<', "LESS");
 CHAR_TOKEN(Greater, '>', "GREATER");
+CHAR_TOKEN(Slash, '/', "SLASH");
 
 STR_TOKEN(Equals, "==", "EQUAL_EQUAL");
 STR_TOKEN(NotEquals, "!=", "BANG_EQUAL");
@@ -89,7 +90,7 @@ static_assert(Token<EndOfFile>);
 using TokenVariant =
     std::variant<LeftParen, RightParen, LeftBrace, RightBrace, Star, Dot, Comma,
                  Minus, Plus, Semicol, Assign, Bang, Equals, NotEquals, Less,
-                 Greater, LessOrEq, GreaterOrEq, EndOfFile>;
+                 Greater, LessOrEq, GreaterOrEq, Slash, EndOfFile>;
 
 // Template functions built for internal use
 namespace impl {
@@ -142,7 +143,7 @@ template <StrToken T> inline string stringify_token(const T& token) {
 
 using AllCharTokens =
     TokenList<LeftParen, RightParen, LeftBrace, RightBrace, Star, Dot, Comma,
-              Minus, Plus, Semicol, Assign, Bang, Less, Greater>;
+              Minus, Plus, Semicol, Assign, Bang, Less, Greater, Slash>;
 using AllStrTokens = TokenList<Equals, NotEquals, LessOrEq, GreaterOrEq>;
 
 using TokenVec = std::vector<std::expected<TokenVariant, std::string>>;
@@ -151,7 +152,7 @@ using TokenVec = std::vector<std::expected<TokenVariant, std::string>>;
 // and add the token to tokens
 template <StrToken TTok>
 inline bool match_str_tok(TokenVec& tokens, std::string::const_iterator& it,
-                            std::string const& str) {
+                          std::string const& str) {
     if (TTok::LEXEME.starts_with(*it)) {
         auto inner_it = it;
         constexpr size_t tok_len = TTok::LEXEME.size();
@@ -163,7 +164,7 @@ inline bool match_str_tok(TokenVec& tokens, std::string::const_iterator& it,
                 it += tok_len;
                 return true;
             }
-            }
+        }
     }
 
     return false;
@@ -213,6 +214,17 @@ inline impl::TokenVec lex(const std::string& file_contents, size_t& out_num_errs
         const char& c = *it;
         dbg(impl::format("Checking {}", c));
 
+        // Check for comment first
+        if (c == '/' && ((it + 1) < file_contents.end()) && *(it + 1) == '/') {
+            while (it != file_contents.end() && *it != '\n') {
+                ++it;
+            }
+            // increment one last time to drop us to the next line
+            if (it != file_contents.end()) {
+                ++it;
+            }
+            continue;
+        }
         if (impl::match_str_toks(impl::AllStrTokens(), tokens, it, file_contents)) {
             continue;
         }
