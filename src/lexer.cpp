@@ -1,18 +1,18 @@
 //
 // Created by user on 16-Nov-25.
 //
-#include <unordered_set>
 #include <print>
+#include <unordered_set>
 
 #include "lexer.hpp"
 
 #include <optional>
 
 using impl::TokenList;
-using std::unordered_set;
 using std::format;
+using std::holds_alternative;
 using std::string;
-using impl::TokenList;
+using std::unordered_set;
 
 using AllCharTokens =
     TokenList<LeftParen, RightParen, LeftBrace, RightBrace, Star, Dot, Comma,
@@ -28,20 +28,30 @@ void print_token_variant(const TokenVariant& tok) {
 }
 
 constexpr bool DEBUG_LOG_LEXER = false;
+static const unordered_set<char> ignored_chars = {' ', '\t', '\r'};
+
+static const auto dbg = [](auto const& text) {
+    if constexpr (DEBUG_LOG_LEXER) {
+        println("{}", text);
+    }
+};
+
+struct ParsedString {
+    string value;
+};
+struct ParsedNum {
+    double value = 0.0;
+    bool parsing_fractional_part = false;
+};
 
 struct LexerState {
     size_t line_num = 1;
-    std::optional<string> parsed_string;
+    std::variant<ParsedString, ParsedNum, std::monostate> parsed;
+
+    LexerState() { parsed = std::monostate{}; }
 };
 
 TokenVec lex(const string& file_contents, size_t& out_num_errs) {
-    static const auto dbg = [](auto const& text) {
-        if constexpr (DEBUG_LOG_LEXER) {
-            println("{}", text);
-        }
-    };
-    static const unordered_set<char> ignored_chars = {' ', '\t', '\r'};
-
     TokenVariant token;
     TokenVec tokens;
     // Keeping track for print errors
@@ -52,23 +62,31 @@ TokenVec lex(const string& file_contents, size_t& out_num_errs) {
         const char& c = *it;
         dbg(format("Checking {}", c));
 
+        // TODO if we are building num literal and this next
+        // char is not a number - submit the number
         // Check for string start/end
         if (c == '"') {
             // We are ending a string literal?
-            if (state.parsed_string.has_value()) {
-                tokens.emplace_back(StringLiteral(std::move(*state.parsed_string)));
-                state.parsed_string.reset();
+            if (holds_alternative<ParsedString>(state.parsed)) {
+                tokens.emplace_back(StringLiteral(
+                    std::move(std::get<ParsedString>(state.parsed).value)));
+                // reset parsed
+                state.parsed = std::monostate{};
             } else {
                 // We are starting a string literal
-                state.parsed_string.emplace("");
+                state.parsed.emplace<ParsedString>();
             }
             ++it;
             continue;
         }
-        // Check for ongoing string literal
-        if (state.parsed_string.has_value()) {
-            *state.parsed_string += c;
+        // Check for ongoing string
+        if (holds_alternative<ParsedString>(state.parsed)) {
+            std::get<ParsedString>(state.parsed).value += c;
             ++it;
+            // Make sure we are still tracking line num
+            if (c == '\n') {
+                state.line_num += 1;
+            }
             continue;
         }
         // Check for comment, after string
@@ -104,9 +122,9 @@ TokenVec lex(const string& file_contents, size_t& out_num_errs) {
     }
 
     // Forgot to terminate string
-    if (state.parsed_string.has_value()) {
-        const string err_msg = format(
-            "[line {}] Error: Unterminated string.", state.line_num);
+    if (holds_alternative<ParsedString>(state.parsed)) {
+        const string err_msg =
+            format("[line {}] Error: Unterminated string.", state.line_num);
         tokens.emplace_back(std::unexpected(err_msg));
         out_num_errs += 1;
     }
