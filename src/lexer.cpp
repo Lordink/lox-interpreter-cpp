@@ -6,9 +6,12 @@
 
 #include "lexer.hpp"
 
-using std::string;
+#include <optional>
+
+using impl::TokenList;
 using std::unordered_set;
 using std::format;
+using std::string;
 using impl::TokenList;
 
 using AllCharTokens =
@@ -23,6 +26,13 @@ void print_token_variant(const TokenVariant& tok) {
         },
         tok);
 }
+
+constexpr bool DEBUG_LOG_LEXER = false;
+
+struct LexerState {
+    size_t line_num = 1;
+    std::optional<string> parsed_string;
+};
 
 TokenVec lex(const string& file_contents, size_t& out_num_errs) {
     static const auto dbg = [](auto const& text) {
@@ -42,7 +52,26 @@ TokenVec lex(const string& file_contents, size_t& out_num_errs) {
         const char& c = *it;
         dbg(format("Checking {}", c));
 
-        // Check for comment first
+        // Check for string start/end
+        if (c == '"') {
+            // We are ending a string literal?
+            if (state.parsed_string.has_value()) {
+                tokens.emplace_back(StringLiteral(std::move(*state.parsed_string)));
+                state.parsed_string.reset();
+            } else {
+                // We are starting a string literal
+                state.parsed_string.emplace("");
+            }
+            ++it;
+            continue;
+        }
+        // Check for ongoing string literal
+        if (state.parsed_string.has_value()) {
+            *state.parsed_string += c;
+            ++it;
+            continue;
+        }
+        // Check for comment, after string
         if (c == '/' && ((it + 1) < file_contents.end()) && *(it + 1) == '/') {
             while (it != file_contents.end() && *it != '\n') {
                 ++it;
@@ -72,6 +101,14 @@ TokenVec lex(const string& file_contents, size_t& out_num_errs) {
         }
 
         ++it;
+    }
+
+    // Forgot to terminate string
+    if (state.parsed_string.has_value()) {
+        const string err_msg = format(
+            "[line {}] Error: Unterminated string.", state.line_num);
+        tokens.emplace_back(std::unexpected(err_msg));
+        out_num_errs += 1;
     }
 
     tokens.emplace_back(EndOfFile());

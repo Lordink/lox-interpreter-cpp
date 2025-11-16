@@ -83,10 +83,19 @@ struct EndOfFile {
 // Keeping here for consistency and to avoid surprises later
 static_assert(Token<EndOfFile>);
 
+// String literal
+struct StringLiteral {
+    static constexpr std::string_view KIND = "STRING";
+    std::string literal;
+
+    StringLiteral(std::string literal): literal(std::move(literal)) {}
+};
+static_assert(Token<StringLiteral>);
+
 using TokenVariant =
     std::variant<LeftParen, RightParen, LeftBrace, RightBrace, Star, Dot, Comma,
                  Minus, Plus, Semicol, Assign, Bang, Equals, NotEquals, Less,
-                 Greater, LessOrEq, GreaterOrEq, Slash, EndOfFile>;
+                 Greater, LessOrEq, GreaterOrEq, Slash, EndOfFile, StringLiteral>;
 
 // Ultimately, this is what lexer outputs.
 // Each entry is either a valid token, or a string with an error
@@ -120,19 +129,21 @@ bool match_char_toks(TokenList<Ts...> _tlist, char const& c,
     return (set_if_matches<Ts>(c, out) || ...);
 }
 
-template <Token T> string stringify_token(const T& token) {
+template <Token T> inline string stringify_token(const T& token) {
     // TODO value when toks have values
     return format("{}  null", T::KIND);
 }
-
-template <CharToken T> string stringify_token(const T& token) {
+template <CharToken T> inline string stringify_token(const T& token) {
     // TODO value when toks have values
     return format("{} {} null", T::KIND, T::LEXEME);
 }
-
 template <StrToken T> inline string stringify_token(const T& token) {
     // TODO value when toks have values
     return format("{} {} null", T::KIND, T::LEXEME);
+}
+template<> inline string stringify_token(const StringLiteral& token) {
+    // TODO value when toks have values
+    return format("{} \"{}\" {}", StringLiteral::KIND, token.literal, token.literal);
 }
 
 // If the token matches TTok's lexeme - we advance the it iterator accordingly,
@@ -170,12 +181,6 @@ constexpr bool match_str_toks(TokenList<Ts...> tlist, TokenVec& tokens,
 } // namespace impl
 
 void print_token_variant(const TokenVariant& tok);
-
-constexpr bool DEBUG_LOG_LEXER = false;
-
-struct LexerState {
-    size_t line_num = 1;
-};
 
 [[nodiscard]]
 TokenVec lex(const std::string& file_contents, size_t& out_num_errs);
