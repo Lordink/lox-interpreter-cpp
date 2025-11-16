@@ -8,11 +8,7 @@
 
 #include <expected>
 #include <format>
-#include <iostream>
-#include <print>
-#include <stdexcept>
 #include <string>
-#include <unordered_set>
 #include <variant>
 #include <vector>
 
@@ -92,17 +88,15 @@ using TokenVariant =
                  Minus, Plus, Semicol, Assign, Bang, Equals, NotEquals, Less,
                  Greater, LessOrEq, GreaterOrEq, Slash, EndOfFile>;
 
+// Ultimately, this is what lexer outputs.
+// Each entry is either a valid token, or a string with an error
+// (keeping it simple for now)
+using TokenVec = std::vector<std::expected<TokenVariant, std::string>>;
+
 // Template functions built for internal use
 namespace impl {
-using std::cout;
-using std::endl;
-using std::expected;
 using std::format;
-using std::println;
 using std::string;
-using std::string_view;
-using std::unordered_set;
-using std::variant;
 using std::vector;
 
 /// Writes token's kind to @out, if that token matches @c
@@ -122,7 +116,7 @@ template <Token... Ts> struct TokenList {};
 // That works, since they are a subtype
 template <CharToken... Ts>
 bool match_char_toks(TokenList<Ts...> _tlist, char const& c,
-                        TokenVariant& out) {
+                     TokenVariant& out) {
     return (set_if_matches<Ts>(c, out) || ...);
 }
 
@@ -141,23 +135,16 @@ template <StrToken T> inline string stringify_token(const T& token) {
     return format("{} {} null", T::KIND, T::LEXEME);
 }
 
-using AllCharTokens =
-    TokenList<LeftParen, RightParen, LeftBrace, RightBrace, Star, Dot, Comma,
-              Minus, Plus, Semicol, Assign, Bang, Less, Greater, Slash>;
-using AllStrTokens = TokenList<Equals, NotEquals, LessOrEq, GreaterOrEq>;
-
-using TokenVec = std::vector<std::expected<TokenVariant, std::string>>;
-
 // If the token matches TTok's lexeme - we advance the it iterator accordingly,
 // and add the token to tokens
 template <StrToken TTok>
 [[nodiscard]]
-inline bool match_str_tok(TokenVec& tokens, std::string::const_iterator& it,
+inline bool match_str_tok(TokenVec& tokens, string::const_iterator& it,
                           const size_t remaining_len) {
     if (TTok::LEXEME.starts_with(*it)) {
         constexpr size_t tok_len = TTok::LEXEME.size();
         if (remaining_len >= tok_len) {
-            const auto substr = std::string(it, it + tok_len);
+            const auto substr = string(it, it + tok_len);
             if (substr == TTok::LEXEME) {
                 tokens.push_back(TTok());
                 it += tok_len;
@@ -169,85 +156,26 @@ inline bool match_str_tok(TokenVec& tokens, std::string::const_iterator& it,
     return false;
 }
 
-
+// Given a list of toks - call match_str_tok() until one of them yields true
+// NOTE: We are assuming that the ones that ret false do NOT modify iterator or
+// TokenVec
 template <StrToken... Ts>
 [[nodiscard]]
-constexpr bool match_str_toks(TokenList<Ts...> tlist, TokenVec& tokens, std::string::const_iterator& it,
-                            std::string const& str) {
+constexpr bool match_str_toks(TokenList<Ts...> tlist, TokenVec& tokens,
+                              string::const_iterator& it, string const& str) {
     const size_t remaining_len = std::distance(it, str.end());
     return (match_str_tok<Ts>(tokens, it, remaining_len) || ...);
 }
 
 } // namespace impl
 
-inline void print_token_variant(const TokenVariant& tok) {
-    std::visit(
-        [](const auto& token) {
-            std::println("{}", impl::stringify_token(token));
-        },
-        tok);
-}
+void print_token_variant(const TokenVariant& tok);
 
-static const std::unordered_set<char> ignored_chars = {' ', '\t', '\r'};
 constexpr bool DEBUG_LOG_LEXER = false;
 
 struct LexerState {
     size_t line_num = 1;
 };
 
-
-
 [[nodiscard]]
-inline impl::TokenVec lex(const std::string& file_contents, size_t& out_num_errs) {
-    static const auto dbg = [](auto const& text) {
-        if constexpr (DEBUG_LOG_LEXER) {
-            println("{}", text);
-        }
-    };
-
-    TokenVariant token;
-    impl::TokenVec tokens;
-    // Keeping track for print errors
-    LexerState state;
-
-    auto it = file_contents.begin();
-    while (it != file_contents.end()) {
-        const char& c = *it;
-        dbg(impl::format("Checking {}", c));
-
-        // Check for comment first
-        if (c == '/' && ((it + 1) < file_contents.end()) && *(it + 1) == '/') {
-            while (it != file_contents.end() && *it != '\n') {
-                ++it;
-            }
-            // increment one last time to drop us to the next line
-            if (it != file_contents.end()) {
-                ++it;
-                state.line_num += 1;
-            }
-            continue;
-        }
-        if (impl::match_str_toks(impl::AllStrTokens(), tokens, it, file_contents)) {
-            continue;
-        }
-        if (impl::match_char_toks(impl::AllCharTokens(), c, token)) {
-            tokens.push_back(token);
-        } else if (c == '\n') {
-            state.line_num += 1;
-        } else if (ignored_chars.contains(c)) {
-            // Do nothing if we run into ignored characters
-        } else {
-            // Failure case. Add as a string.
-            const std::string err_msg = std::format(
-                "[line {}] Error: Unexpected character: {}", state.line_num, c);
-            tokens.emplace_back(std::unexpected(err_msg));
-            out_num_errs += 1;
-        }
-
-        ++it;
-    }
-
-    tokens.emplace_back(EndOfFile());
-
-    return tokens;
-}
+TokenVec lex(const std::string& file_contents, size_t& out_num_errs);
