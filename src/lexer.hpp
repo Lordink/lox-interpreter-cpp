@@ -204,6 +204,12 @@ template <> inline string stringify_token(const Ident& token) {
     return format("{} {} null", Ident::KIND, token.literal);
 }
 
+
+[[nodiscard]]
+bool is_ident(const char& c) noexcept;
+[[nodiscard]]
+bool is_digit(const char& c) noexcept;
+
 // If the token matches TTok's lexeme - we advance the it iterator accordingly,
 // and add the token to tokens
 template <StrToken TTok>
@@ -215,9 +221,10 @@ inline bool match_str_tok(TokenVec& tokens, string::const_iterator& it,
         if (remaining_len >= tok_len) {
             const auto substr = string(it, it + tok_len);
             // Is what follows a tab, space or newline?
-            const bool is_not_ident =
-                (remaining_len == tok_len) || (*(it + tok_len) == ' ') ||
-                (*(it + tok_len) == '\n') || (*(it + tok_len) == '\t');
+            const bool is_not_ident = (remaining_len == tok_len)
+                || (!is_ident(*(it + tok_len)) && !is_digit(*(it + tok_len)));
+                    /*(*(it + tok_len) == ' ') ||
+                (*(it + tok_len) == '\n') || (*(it + tok_len) == '\t'); */
             if (substr == TTok::LEXEME && is_not_ident) {
                 tokens.push_back(TTok());
                 it += tok_len;

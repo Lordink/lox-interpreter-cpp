@@ -106,13 +106,11 @@ struct LexerState {
     }
 };
 
-[[nodiscard]]
-constexpr bool is_ident(const char& c) noexcept {
+bool impl::is_ident(const char& c) noexcept {
     return (c == '_') || ((c >= 'a') && (c <= 'z')) ||
            ((c >= 'A') && (c <= 'Z'));
 }
-[[nodiscard]]
-constexpr bool is_digit(const char& c) noexcept {
+bool impl::is_digit(const char& c) noexcept {
     return c >= '0' && c <= '9';
 }
 
@@ -123,6 +121,9 @@ TokenVec lex(const string& file_contents, size_t& out_num_errs) {
     TokenVec tokens;
     // Keeping track for print errors
     LexerState state;
+
+    using impl::is_digit;
+    using impl::is_ident;
 
     auto it = file_contents.begin();
     while (it != file_contents.end()) {
