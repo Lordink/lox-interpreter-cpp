@@ -23,19 +23,21 @@ using AllStrTokens = TokenList<Equals, NotEquals, LessOrEq, GreaterOrEq>;
 
 double NumberLiteral::parse_float(std::string const& str) {
     std::string inner_str = str;
-    // Trim trailing 0s
-    for (auto it = str.end() - 1; it >= str.begin(); --it) {
-        if (*it == '0') {
-            // Remove 0 from the end
-            inner_str.pop_back();
-        } else {
-            // Stop as soon as we see non-0
-            break;
+    // Trim trailing 0s, if there's '.'
+    if (inner_str.contains('.')) {
+        for (auto it = str.end() - 1; it >= str.begin(); --it) {
+            if (*it == '0') {
+                // Remove 0 from the end
+                inner_str.pop_back();
+            } else {
+                // Stop as soon as we see non-0
+                break;
+            }
         }
-    }
-    // If after trimming the last thing is dot, we kick out the dot too
-    if (inner_str.back() == '.') {
-        inner_str.pop_back();
+        // If after trimming the last thing is dot, we kick out the dot too
+        if (inner_str.back() == '.') {
+            inner_str.pop_back();
+        }
     }
 
     size_t dot_digit = 0;
