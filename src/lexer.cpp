@@ -17,11 +17,11 @@ using std::unordered_set;
 
 // Note: Order matters. Go from longer toks to shorter,
 // e.g. making sure that /= is before /
-using AllStrTokens = TokenList<
-    Equals, NotEquals, LessOrEq, GreaterOrEq, And,
-                               Class, Else, False, For, Fun, If, Nil, Or, Print,
-Return, Super, This, True, Var, While,LeftParen, RightParen, LeftBrace, RightBrace, Star, Dot, Comma,
-Minus, Plus, Semicol, Assign, Bang, Less, Greater, Slash>;
+using AllStrTokens =
+    TokenList<Equals, NotEquals, LessOrEq, GreaterOrEq, And, Class, Else, False,
+              For, Fun, If, Nil, Or, Print, Return, Super, This, True, Var,
+              While, LeftParen, RightParen, LeftBrace, RightBrace, Star, Dot,
+              Comma, Minus, Plus, Semicol, Assign, Bang, Less, Greater, Slash>;
 
 double NumberLiteral::parse_float(std::string const& str) {
     std::string inner_str = str;
@@ -111,9 +111,7 @@ bool impl::is_ident(const char& c) noexcept {
     return (c == '_') || ((c >= 'a') && (c <= 'z')) ||
            ((c >= 'A') && (c <= 'Z'));
 }
-bool impl::is_digit(const char& c) noexcept {
-    return c >= '0' && c <= '9';
-}
+bool impl::is_digit(const char& c) noexcept { return c >= '0' && c <= '9'; }
 
 // TODO lookeahead parsing?
 [[nodiscard]]
