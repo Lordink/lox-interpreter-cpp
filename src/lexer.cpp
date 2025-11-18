@@ -38,6 +38,8 @@ double NumberLiteral::parse_float(std::string const& str) {
         }
         // If after trimming the last thing is dot, we kick out the dot too
         if (inner_str.back() == '.') {
+            // reset it
+            dot_digit = 0;
             inner_str.pop_back();
         }
     }
@@ -110,8 +112,8 @@ TokenVec lex(const string& file_contents, size_t& out_num_errs) {
             ParsedNum& numState = std::get<ParsedNum>(state.parsed);
             // Dot is only parsed as fractional sign if it's followed by a number
             const bool next_char_is_number =
-                (it + 1) < file_contents.end() &&
-                (*(it + 1) >= '0' || *(it + 1) <= '9');
+                ((it + 1) < file_contents.end()) &&
+                ((*(it + 1) >= '0') && (*(it + 1) <= '9'));
             // ... and this is still a number
             if ((c >= '0' && c <= '9') || (c == '.' && next_char_is_number)) {
                 numState.value += c;
