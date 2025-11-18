@@ -18,7 +18,9 @@ using std::unordered_set;
 using AllCharTokens =
     TokenList<LeftParen, RightParen, LeftBrace, RightBrace, Star, Dot, Comma,
               Minus, Plus, Semicol, Assign, Bang, Less, Greater, Slash>;
-using AllStrTokens = TokenList<Equals, NotEquals, LessOrEq, GreaterOrEq>;
+using AllStrTokens = TokenList<Equals, NotEquals, LessOrEq, GreaterOrEq, And,
+                               Class, Else, False, For, Fun, If, Nil, Or, Print,
+                               Return, Super, This, True, Var, While>;
 
 double NumberLiteral::parse_float(std::string const& str) {
     std::string inner_str = str;
@@ -136,7 +138,12 @@ TokenVec lex(const string& file_contents, size_t& out_num_errs) {
                 ++it;
                 continue;
             } else {
+                // if (impl::match_str_toks(ReservedKeywords(), tokens,
+                // file_contents)) {
+                //
+                // } else {
                 tokens.push_back(Ident(ident.value));
+                // }
                 state.reset();
             }
         }
@@ -237,8 +244,7 @@ TokenVec lex(const string& file_contents, size_t& out_num_errs) {
             NumberLiteral(std::get<ParsedNum>(state.parsed).value));
         state.reset();
     } else if (holds_alternative<ParsedIdent>(state.parsed)) {
-        tokens.push_back(
-            Ident(std::get<ParsedIdent>(state.parsed).value));
+        tokens.push_back(Ident(std::get<ParsedIdent>(state.parsed).value));
         state.reset();
     }
 

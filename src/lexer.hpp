@@ -74,6 +74,24 @@ STR_TOKEN(NotEquals, "!=", "BANG_EQUAL");
 STR_TOKEN(LessOrEq, "<=", "LESS_EQUAL");
 STR_TOKEN(GreaterOrEq, ">=", "GREATER_EQUAL");
 
+// Reserved:
+STR_TOKEN(And, "and", "AND");
+STR_TOKEN(Class, "class", "CLASS");
+STR_TOKEN(Else, "else", "ELSE");
+STR_TOKEN(False, "false", "FALSE");
+STR_TOKEN(For, "for", "FOR");
+STR_TOKEN(Fun, "fun", "FUN");
+STR_TOKEN(If, "if", "IF");
+STR_TOKEN(Nil, "nil", "NIL");
+STR_TOKEN(Or, "or", "OR");
+STR_TOKEN(Print, "print", "PRINT");
+STR_TOKEN(Return, "return", "RETURN");
+STR_TOKEN(Super, "super", "SUPER");
+STR_TOKEN(This, "this", "THIS");
+STR_TOKEN(True, "true", "TRUE");
+STR_TOKEN(Var, "var", "VAR");
+STR_TOKEN(While, "while", "WHILE");
+
 // EOF is a special token we nonetheless use
 struct EndOfFile {
     static constexpr std::string_view KIND = "EOF";
@@ -126,7 +144,9 @@ using TokenVariant =
     std::variant<LeftParen, RightParen, LeftBrace, RightBrace, Star, Dot, Comma,
                  Minus, Plus, Semicol, Assign, Bang, Equals, NotEquals, Less,
                  Greater, LessOrEq, GreaterOrEq, Slash, EndOfFile,
-                 StringLiteral, NumberLiteral, Ident>;
+                 StringLiteral, NumberLiteral, Ident, And, Class, Else, False,
+                 For, Fun, If, Nil, Or, Print, Return, Super, This, True, Var,
+                 While>;
 
 // Ultimately, this is what lexer outputs.
 // Each entry is either a valid token, or a string with an error
@@ -161,13 +181,10 @@ bool match_char_toks(TokenList<Ts...> _tlist, char const& c,
 }
 
 template <Token T> inline string stringify_token(const T& token) {
-    return format("{}  null", T::KIND);
-}
-template <CharToken T> inline string stringify_token(const T& token) {
     return format("{} {} null", T::KIND, T::LEXEME);
 }
-template <StrToken T> inline string stringify_token(const T& token) {
-    return format("{} {} null", T::KIND, T::LEXEME);
+template <> inline string stringify_token(const EndOfFile& token) {
+    return format("{}  null", EndOfFile::KIND);
 }
 template <> inline string stringify_token(const StringLiteral& token) {
     return format("{} \"{}\" {}", StringLiteral::KIND, token.literal,
@@ -197,7 +214,11 @@ inline bool match_str_tok(TokenVec& tokens, string::const_iterator& it,
         constexpr size_t tok_len = TTok::LEXEME.size();
         if (remaining_len >= tok_len) {
             const auto substr = string(it, it + tok_len);
-            if (substr == TTok::LEXEME) {
+            // Is what follows a tab, space or newline?
+            const bool is_not_ident =
+                (remaining_len == tok_len) || (*(it + tok_len) == ' ') ||
+                (*(it + tok_len) == '\n') || (*(it + tok_len) == '\t');
+            if (substr == TTok::LEXEME && is_not_ident) {
                 tokens.push_back(TTok());
                 it += tok_len;
                 return true;
