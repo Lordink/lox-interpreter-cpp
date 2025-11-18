@@ -23,74 +23,58 @@ concept Token = requires {
     requires T::KIND.size() > 0;
 };
 
-// Character (one char)-based token, like LEFT_PAREN or PLUS
-template <typename T>
-concept CharToken = Token<T> && requires {
-    { T::LEXEME } -> std::convertible_to<char>;
-    // Assert that its constexpr
-    typename std::integral_constant<char, T::LEXEME>;
-};
-
-#define CHAR_TOKEN(_name, _lexeme, _kind)                                      \
-    struct _name {                                                             \
-        static constexpr char LEXEME = _lexeme;                                \
-        static constexpr std::string_view KIND = _kind;                        \
-    };                                                                         \
-    static_assert(CharToken<_name>);
-
-// Multi-char token.
-// Could just make all CharTokens StrTokens, but
-// would lose on some perf and simplicity (arguable)
+// Generic token which has a stable (static) lexeme
+// This excludes e.g. literals and idents
 template <typename T>
 concept StrToken = Token<T> && requires {
     { T::LEXEME } -> std::convertible_to<std::string_view>;
 };
 
-#define STR_TOKEN(_name, _lexeme, _kind)                                       \
-    struct _name {                                                             \
-        static constexpr std::string_view LEXEME = _lexeme;                    \
-        static constexpr std::string_view KIND = _kind;                        \
+#define TOKEN(name_, lexeme, kind)                                             \
+    struct name_ {                                                             \
+        static constexpr std::string_view LEXEME = lexeme;                     \
+        static constexpr std::string_view KIND = #kind;                        \
     };                                                                         \
-    static_assert(StrToken<_name>);
+    static_assert(StrToken<name_>);
 
-CHAR_TOKEN(LeftParen, '(', "LEFT_PAREN");
-CHAR_TOKEN(RightParen, ')', "RIGHT_PAREN");
-CHAR_TOKEN(LeftBrace, '{', "LEFT_BRACE");
-CHAR_TOKEN(RightBrace, '}', "RIGHT_BRACE");
-CHAR_TOKEN(Star, '*', "STAR");
-CHAR_TOKEN(Dot, '.', "DOT");
-CHAR_TOKEN(Comma, ',', "COMMA");
-CHAR_TOKEN(Minus, '-', "MINUS");
-CHAR_TOKEN(Plus, '+', "PLUS");
-CHAR_TOKEN(Semicol, ';', "SEMICOLON");
-CHAR_TOKEN(Assign, '=', "EQUAL");
-CHAR_TOKEN(Bang, '!', "BANG");
-CHAR_TOKEN(Less, '<', "LESS");
-CHAR_TOKEN(Greater, '>', "GREATER");
-CHAR_TOKEN(Slash, '/', "SLASH");
+TOKEN(LeftParen, "(", LEFT_PAREN);
+TOKEN(RightParen, ")", RIGHT_PAREN);
+TOKEN(LeftBrace, "{", LEFT_BRACE);
+TOKEN(RightBrace, "}", RIGHT_BRACE);
+TOKEN(Star, "*", STAR);
+TOKEN(Dot, ".", DOT);
+TOKEN(Comma, ",", COMMA);
+TOKEN(Minus, "-", MINUS);
+TOKEN(Plus, "+", PLUS);
+TOKEN(Semicol, ";", SEMICOLON);
+TOKEN(Assign, "=", EQUAL);
+TOKEN(Bang, "!", BANG);
+TOKEN(Less, "<", LESS);
+TOKEN(Greater, ">", GREATER);
+TOKEN(Slash, "/", SLASH);
 
-STR_TOKEN(Equals, "==", "EQUAL_EQUAL");
-STR_TOKEN(NotEquals, "!=", "BANG_EQUAL");
-STR_TOKEN(LessOrEq, "<=", "LESS_EQUAL");
-STR_TOKEN(GreaterOrEq, ">=", "GREATER_EQUAL");
+TOKEN(Equals, "==", EQUAL_EQUAL);
+TOKEN(NotEquals, "!=", BANG_EQUAL);
+TOKEN(LessOrEq, "<=", LESS_EQUAL);
+TOKEN(GreaterOrEq, ">=", GREATER_EQUAL);
 
 // Reserved:
-STR_TOKEN(And, "and", "AND");
-STR_TOKEN(Class, "class", "CLASS");
-STR_TOKEN(Else, "else", "ELSE");
-STR_TOKEN(False, "false", "FALSE");
-STR_TOKEN(For, "for", "FOR");
-STR_TOKEN(Fun, "fun", "FUN");
-STR_TOKEN(If, "if", "IF");
-STR_TOKEN(Nil, "nil", "NIL");
-STR_TOKEN(Or, "or", "OR");
-STR_TOKEN(Print, "print", "PRINT");
-STR_TOKEN(Return, "return", "RETURN");
-STR_TOKEN(Super, "super", "SUPER");
-STR_TOKEN(This, "this", "THIS");
-STR_TOKEN(True, "true", "TRUE");
-STR_TOKEN(Var, "var", "VAR");
-STR_TOKEN(While, "while", "WHILE");
+TOKEN(And, "and", AND);
+TOKEN(Class, "class", CLASS);
+TOKEN(Else, "else", ELSE);
+TOKEN(False, "false", FALSE);
+TOKEN(For, "for", FOR);
+TOKEN(Fun, "fun", FUN);
+TOKEN(If, "if", IF);
+TOKEN(Nil, "nil", NIL);
+TOKEN(Or, "or", OR);
+TOKEN(Print, "print", PRINT);
+TOKEN(Return, "return", RETURN);
+TOKEN(Super, "super", SUPER);
+TOKEN(This, "this", THIS);
+TOKEN(True, "true", TRUE);
+TOKEN(Var, "var", VAR);
+TOKEN(While, "while", WHILE);
 
 // EOF is a special token we nonetheless use
 struct EndOfFile {
@@ -132,6 +116,7 @@ struct NumberLiteral {
 };
 static_assert(Token<NumberLiteral>);
 
+// Identifier (e.g. reserved keywords)
 struct Ident {
     static constexpr std::string_view KIND = "IDENTIFIER";
     std::string literal;
@@ -140,6 +125,7 @@ struct Ident {
 };
 static_assert(Token<Ident>);
 
+// All tokens, including those defined manually, not just via TOKEN()
 using TokenVariant =
     std::variant<LeftParen, RightParen, LeftBrace, RightBrace, Star, Dot, Comma,
                  Minus, Plus, Semicol, Assign, Bang, Equals, NotEquals, Less,
@@ -159,26 +145,9 @@ using std::format;
 using std::string;
 using std::vector;
 
-/// Writes token's kind to @out, if that token matches @c
-template <CharToken T> bool set_if_matches(char const& c, TokenVariant& out) {
-    if (c == T::LEXEME) {
-        out = T();
-        return true;
-    }
-    return false;
-}
-
 // Comptime template-level list of tokens,
 // hence the struct is 0-sized
 template <Token... Ts> struct TokenList {};
-
-// Accepts a tokenList, but is templated over CharTokens
-// That works, since they are a subtype
-template <CharToken... Ts>
-bool match_char_toks(TokenList<Ts...> _tlist, char const& c,
-                     TokenVariant& out) {
-    return (set_if_matches<Ts>(c, out) || ...);
-}
 
 template <Token T> inline string stringify_token(const T& token) {
     return format("{} {} null", T::KIND, T::LEXEME);
@@ -204,7 +173,6 @@ template <> inline string stringify_token(const Ident& token) {
     return format("{} {} null", Ident::KIND, token.literal);
 }
 
-
 [[nodiscard]]
 bool is_ident(const char& c) noexcept;
 [[nodiscard]]
@@ -220,11 +188,11 @@ inline bool match_str_tok(TokenVec& tokens, string::const_iterator& it,
         constexpr size_t tok_len = TTok::LEXEME.size();
         if (remaining_len >= tok_len) {
             const auto substr = string(it, it + tok_len);
-            // Is what follows a tab, space or newline?
-            const bool is_not_ident = (remaining_len == tok_len)
-                || (!is_ident(*(it + tok_len)) && !is_digit(*(it + tok_len)));
-                    /*(*(it + tok_len) == ' ') ||
-                (*(it + tok_len) == '\n') || (*(it + tok_len) == '\t'); */
+            // Is the char following this tok NOT a num, underscore or letter?
+            // If it was, that means we're inside an ident instead
+            const bool is_not_ident =
+                (remaining_len == tok_len) ||
+                (!is_ident(*(it + tok_len)) && !is_digit(*(it + tok_len)));
             if (substr == TTok::LEXEME && is_not_ident) {
                 tokens.push_back(TTok());
                 it += tok_len;

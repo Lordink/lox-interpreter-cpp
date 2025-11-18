@@ -15,10 +15,10 @@ using std::holds_alternative;
 using std::string;
 using std::unordered_set;
 
-using AllCharTokens =
-    TokenList<LeftParen, RightParen, LeftBrace, RightBrace, Star, Dot, Comma,
-              Minus, Plus, Semicol, Assign, Bang, Less, Greater, Slash>;
-using AllStrTokens = TokenList<Equals, NotEquals, LessOrEq, GreaterOrEq, And,
+using AllStrTokens = TokenList<
+    LeftParen, RightParen, LeftBrace, RightBrace, Star, Dot, Comma,
+                  Minus, Plus, Semicol, Assign, Bang, Less, Greater, Slash,
+    Equals, NotEquals, LessOrEq, GreaterOrEq, And,
                                Class, Else, False, For, Fun, If, Nil, Or, Print,
                                Return, Super, This, True, Var, While>;
 
@@ -213,9 +213,7 @@ TokenVec lex(const string& file_contents, size_t& out_num_errs) {
         if (impl::match_str_toks(AllStrTokens(), tokens, it, file_contents)) {
             continue;
         }
-        if (impl::match_char_toks(AllCharTokens(), c, token)) {
-            tokens.push_back(token);
-        } else if (c == '\n') {
+        if (c == '\n') {
             state.line_num += 1;
         } else if (ignored_chars.contains(c)) {
             // Do nothing if we run into ignored characters
