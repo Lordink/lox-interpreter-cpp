@@ -1,14 +1,13 @@
 //
 // Created by user on 16-Nov-25.
 //
+#include <assert.h>
+#include <cmath>
+#include <optional>
 #include <print>
 #include <unordered_set>
-#include <optional>
-#include <cmath>
-#include <assert.h>
 
 #include "lexer.hpp"
-
 
 using impl::TokenList;
 using std::format;
@@ -79,10 +78,15 @@ static const auto dbg = [](auto const& text) {
     }
 };
 
+// TODO if they have identical forms - just move things to enum
+struct ParsedIdent {
+    string value;
+
+    ParsedIdent(const char c) { value = c; }
+};
 struct ParsedString {
     string value;
 };
-
 struct ParsedNum {
     string value;
 
@@ -91,12 +95,27 @@ struct ParsedNum {
 
 struct LexerState {
     size_t line_num = 1;
-    std::variant<ParsedString, ParsedNum, std::monostate> parsed;
+    std::variant<ParsedString, ParsedNum, ParsedIdent, std::monostate> parsed;
 
     LexerState() { parsed = std::monostate{}; }
+    void reset() { parsed = std::monostate{}; }
+    bool is_empty() const {
+        return holds_alternative<std::monostate>(this->parsed);
+    }
 };
 
+[[nodiscard]]
+constexpr bool is_ident(const char& c) noexcept {
+    return (c == '_') || ((c >= 'a') && (c <= 'z')) ||
+           ((c >= 'A') && (c <= 'Z'));
+}
+[[nodiscard]]
+constexpr bool is_digit(const char& c) noexcept {
+    return c >= '0' && c <= '9';
+}
+
 // TODO lookeahead parsing?
+[[nodiscard]]
 TokenVec lex(const string& file_contents, size_t& out_num_errs) {
     TokenVariant token;
     TokenVec tokens;
@@ -108,14 +127,27 @@ TokenVec lex(const string& file_contents, size_t& out_num_errs) {
         const char& c = *it;
         dbg(format("Checking {}", c));
 
+        if (holds_alternative<ParsedIdent>(state.parsed)) {
+            ParsedIdent& ident = std::get<ParsedIdent>(state.parsed);
+            // Could be a digit, cause it's not the starting char
+            // of an ident
+            if (is_ident(c) || is_digit(c)) {
+                ident.value += c;
+                ++it;
+                continue;
+            } else {
+                tokens.push_back(Ident(ident.value));
+                state.reset();
+            }
+        }
         if (holds_alternative<ParsedNum>(state.parsed)) {
             ParsedNum& numState = std::get<ParsedNum>(state.parsed);
-            // Dot is only parsed as fractional sign if it's followed by a number
+            // Dot is only parsed as fractional sign if it's followed by a
+            // number
             const bool next_char_is_number =
-                ((it + 1) < file_contents.end()) &&
-                ((*(it + 1) >= '0') && (*(it + 1) <= '9'));
+                ((it + 1) < file_contents.end()) && is_digit(*(it + 1));
             // ... and this is still a number
-            if ((c >= '0' && c <= '9') || (c == '.' && next_char_is_number)) {
+            if (is_digit(c) || (c == '.' && next_char_is_number)) {
                 numState.value += c;
                 ++it;
                 continue;
@@ -123,13 +155,12 @@ TokenVec lex(const string& file_contents, size_t& out_num_errs) {
                 // It's not a number, not a dot either. We just stop parsing a
                 // number and fall thru
                 tokens.push_back(NumberLiteral(numState.value));
-                state.parsed = std::monostate{};
+                state.reset();
             }
         }
         // Are we encountering a number while NOT parsing number or anything
         // else?
-        if (c >= '0' && c <= '9' &&
-            holds_alternative<std::monostate>(state.parsed)) {
+        if (is_digit(c) && state.is_empty()) {
             state.parsed = ParsedNum(c);
             ++it;
             continue;
@@ -141,7 +172,7 @@ TokenVec lex(const string& file_contents, size_t& out_num_errs) {
                 tokens.emplace_back(StringLiteral(
                     std::move(std::get<ParsedString>(state.parsed).value)));
                 // reset parsed
-                state.parsed = std::monostate{};
+                state.reset();
             } else {
                 // We are starting a string literal
                 state.parsed.emplace<ParsedString>();
@@ -180,6 +211,8 @@ TokenVec lex(const string& file_contents, size_t& out_num_errs) {
             state.line_num += 1;
         } else if (ignored_chars.contains(c)) {
             // Do nothing if we run into ignored characters
+        } else if (is_ident(c)) {
+            state.parsed = ParsedIdent(c);
         } else {
             // Failure case. Add as a string.
             const string err_msg = format(
@@ -197,11 +230,16 @@ TokenVec lex(const string& file_contents, size_t& out_num_errs) {
             format("[line {}] Error: Unterminated string.", state.line_num);
         tokens.emplace_back(std::unexpected(err_msg));
         out_num_errs += 1;
+        state.reset();
     } else if (holds_alternative<ParsedNum>(state.parsed)) {
         // Not actually an error, just gotta dump the number
         tokens.push_back(
             NumberLiteral(std::get<ParsedNum>(state.parsed).value));
-        state.parsed = std::monostate{};
+        state.reset();
+    } else if (holds_alternative<ParsedIdent>(state.parsed)) {
+        tokens.push_back(
+            Ident(std::get<ParsedIdent>(state.parsed).value));
+        state.reset();
     }
 
     tokens.emplace_back(EndOfFile());

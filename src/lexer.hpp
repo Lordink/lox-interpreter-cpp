@@ -86,7 +86,7 @@ struct StringLiteral {
     static constexpr std::string_view KIND = "STRING";
     std::string literal;
 
-    StringLiteral(std::string literal): literal(std::move(literal)) {}
+    StringLiteral(std::string literal) : literal(std::move(literal)) {}
 };
 static_assert(Token<StringLiteral>);
 
@@ -114,10 +114,19 @@ struct NumberLiteral {
 };
 static_assert(Token<NumberLiteral>);
 
+struct Ident {
+    static constexpr std::string_view KIND = "IDENTIFIER";
+    std::string literal;
+
+    Ident(std::string literal) : literal(std::move(literal)) {}
+};
+static_assert(Token<Ident>);
+
 using TokenVariant =
     std::variant<LeftParen, RightParen, LeftBrace, RightBrace, Star, Dot, Comma,
                  Minus, Plus, Semicol, Assign, Bang, Equals, NotEquals, Less,
-                 Greater, LessOrEq, GreaterOrEq, Slash, EndOfFile, StringLiteral, NumberLiteral>;
+                 Greater, LessOrEq, GreaterOrEq, Slash, EndOfFile,
+                 StringLiteral, NumberLiteral, Ident>;
 
 // Ultimately, this is what lexer outputs.
 // Each entry is either a valid token, or a string with an error
@@ -160,15 +169,22 @@ template <CharToken T> inline string stringify_token(const T& token) {
 template <StrToken T> inline string stringify_token(const T& token) {
     return format("{} {} null", T::KIND, T::LEXEME);
 }
-template<> inline string stringify_token(const StringLiteral& token) {
-    return format("{} \"{}\" {}", StringLiteral::KIND, token.literal, token.literal);
+template <> inline string stringify_token(const StringLiteral& token) {
+    return format("{} \"{}\" {}", StringLiteral::KIND, token.literal,
+                  token.literal);
 }
-template<> inline string stringify_token(const NumberLiteral& token) {
-    const bool is_fract_part_meaningful = (token.value - static_cast<double>(static_cast<int>(token.value))) > 0.0;
+template <> inline string stringify_token(const NumberLiteral& token) {
+    const bool is_fract_part_meaningful =
+        (token.value - static_cast<double>(static_cast<int>(token.value))) >
+        0.0;
     const string formatted_value = is_fract_part_meaningful
-        ? format("{}", token.value)
-        : format("{:.1f}", token.value);
-    return format("{} {} {}", NumberLiteral::KIND, token.literal, formatted_value);
+                                       ? format("{}", token.value)
+                                       : format("{:.1f}", token.value);
+    return format("{} {} {}", NumberLiteral::KIND, token.literal,
+                  formatted_value);
+}
+template <> inline string stringify_token(const Ident& token) {
+    return format("{} {} null", Ident::KIND, token.literal);
 }
 
 // If the token matches TTok's lexeme - we advance the it iterator accordingly,
