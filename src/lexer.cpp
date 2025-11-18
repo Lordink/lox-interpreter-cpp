@@ -15,12 +15,13 @@ using std::holds_alternative;
 using std::string;
 using std::unordered_set;
 
+// Note: Order matters. Go from longer toks to shorter,
+// e.g. making sure that /= is before /
 using AllStrTokens = TokenList<
-    LeftParen, RightParen, LeftBrace, RightBrace, Star, Dot, Comma,
-                  Minus, Plus, Semicol, Assign, Bang, Less, Greater, Slash,
     Equals, NotEquals, LessOrEq, GreaterOrEq, And,
                                Class, Else, False, For, Fun, If, Nil, Or, Print,
-                               Return, Super, This, True, Var, While>;
+Return, Super, This, True, Var, While,LeftParen, RightParen, LeftBrace, RightBrace, Star, Dot, Comma,
+Minus, Plus, Semicol, Assign, Bang, Less, Greater, Slash>;
 
 double NumberLiteral::parse_float(std::string const& str) {
     std::string inner_str = str;

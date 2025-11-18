@@ -190,9 +190,9 @@ inline bool match_str_tok(TokenVec& tokens, string::const_iterator& it,
             const auto substr = string(it, it + tok_len);
             // Is the char following this tok NOT a num, underscore or letter?
             // If it was, that means we're inside an ident instead
-            const bool is_not_ident =
-                (remaining_len == tok_len) ||
-                (!is_ident(*(it + tok_len)) && !is_digit(*(it + tok_len)));
+            const bool is_not_ident = (remaining_len == tok_len)
+            || tok_len == 1
+            || (!is_ident(*(it + tok_len)) && !is_digit(*(it + tok_len)));
             if (substr == TTok::LEXEME && is_not_ident) {
                 tokens.push_back(TTok());
                 it += tok_len;
