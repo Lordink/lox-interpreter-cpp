@@ -3,11 +3,12 @@
 //
 #include <print>
 #include <unordered_set>
+#include <optional>
+#include <cmath>
+#include <assert.h>
 
 #include "lexer.hpp"
 
-#include <assert.h>
-#include <optional>
 
 using impl::TokenList;
 using std::format;
@@ -23,7 +24,7 @@ using AllStrTokens = TokenList<Equals, NotEquals, LessOrEq, GreaterOrEq>;
 double NumberLiteral::parse_float(std::string const& str) {
     std::string inner_str = str;
     // Trim trailing 0s
-    for (auto it = str.end() - 1; it > str.begin(); --it) {
+    for (auto it = str.end() - 1; it >= str.begin(); --it) {
         if (*it == '0') {
             // Remove 0 from the end
             inner_str.pop_back();
