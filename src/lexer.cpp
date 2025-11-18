@@ -23,12 +23,14 @@ using AllStrTokens = TokenList<Equals, NotEquals, LessOrEq, GreaterOrEq>;
 
 double NumberLiteral::parse_float(std::string const& str) {
     std::string inner_str = str;
+    int32_t dot_digit = 0;
     // Trim trailing 0s, if there's '.'
     if (inner_str.contains('.')) {
         for (auto it = str.end() - 1; it >= str.begin(); --it) {
             if (*it == '0') {
                 // Remove 0 from the end
                 inner_str.pop_back();
+                --dot_digit;
             } else {
                 // Stop as soon as we see non-0
                 break;
@@ -40,11 +42,12 @@ double NumberLiteral::parse_float(std::string const& str) {
         }
     }
 
-    size_t dot_digit = 0;
     double output = 0.0;
-    for (size_t i = 0; i < inner_str.size(); ++i) {
+    for (int32_t i = 0; i < inner_str.size(); ++i) {
         if (inner_str[i] == '.') {
-            dot_digit = i;
+            // Note "+" here, not assignment
+            // That's because trailing 0 deletion affects this
+            dot_digit += i;
         } else {
             output *= 10.0;
             output += static_cast<double>(inner_str[i] - '0');
