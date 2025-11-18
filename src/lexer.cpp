@@ -6,6 +6,7 @@
 
 #include "lexer.hpp"
 
+#include <assert.h>
 #include <optional>
 
 using impl::TokenList;
@@ -18,6 +19,40 @@ using AllCharTokens =
     TokenList<LeftParen, RightParen, LeftBrace, RightBrace, Star, Dot, Comma,
               Minus, Plus, Semicol, Assign, Bang, Less, Greater, Slash>;
 using AllStrTokens = TokenList<Equals, NotEquals, LessOrEq, GreaterOrEq>;
+
+double NumberLiteral::parse_float(std::string const& str) {
+    std::string inner_str = str;
+    // Trim trailing 0s
+    for (auto it = str.end() - 1; it > str.begin(); --it) {
+        if (*it == '0') {
+            // Remove 0 from the end
+            inner_str.pop_back();
+        } else {
+            // Stop as soon as we see non-0
+            break;
+        }
+    }
+    // If after trimming the last thing is dot, we kick out the dot too
+    if (inner_str.back() == '.') {
+        inner_str.pop_back();
+    }
+
+    size_t dot_digit = 0;
+    double output = 0.0;
+    for (size_t i = 0; i < inner_str.size(); ++i) {
+        if (inner_str[i] == '.') {
+            dot_digit = i;
+        } else {
+            output *= 10.0;
+            output += static_cast<double>(inner_str[i] - '0');
+        }
+    }
+    if (dot_digit != 0) {
+        output /= static_cast<double>(std::pow(10, dot_digit));
+    }
+
+    return output;
+}
 
 void print_token_variant(const TokenVariant& tok) {
     std::visit(
@@ -39,9 +74,11 @@ static const auto dbg = [](auto const& text) {
 struct ParsedString {
     string value;
 };
+
 struct ParsedNum {
-    double value = 0.0;
-    bool parsing_fractional_part = false;
+    string value;
+
+    ParsedNum(const char digit_char) { value = digit_char; }
 };
 
 struct LexerState {
@@ -62,8 +99,32 @@ TokenVec lex(const string& file_contents, size_t& out_num_errs) {
         const char& c = *it;
         dbg(format("Checking {}", c));
 
-        // TODO if we are building num literal and this next
-        // char is not a number - submit the number
+        if (holds_alternative<ParsedNum>(state.parsed)) {
+            ParsedNum& numState = std::get<ParsedNum>(state.parsed);
+            // Dot is only parsed as fractional sign if it's followed by a number
+            const bool next_char_is_number =
+                (it + 1) < file_contents.end() &&
+                (*(it + 1) >= '0' || *(it + 1) <= '9');
+            // ... and this is still a number
+            if ((c >= '0' && c <= '9') || (c == '.' && next_char_is_number)) {
+                numState.value += c;
+                ++it;
+                continue;
+            } else {
+                // It's not a number, not a dot either. We just stop parsing a
+                // number and fall thru
+                tokens.push_back(NumberLiteral(numState.value));
+                state.parsed = std::monostate{};
+            }
+        }
+        // Are we encountering a number while NOT parsing number or anything
+        // else?
+        if (c >= '0' && c <= '9' &&
+            holds_alternative<std::monostate>(state.parsed)) {
+            state.parsed = ParsedNum(c);
+            ++it;
+            continue;
+        }
         // Check for string start/end
         if (c == '"') {
             // We are ending a string literal?
@@ -127,6 +188,11 @@ TokenVec lex(const string& file_contents, size_t& out_num_errs) {
             format("[line {}] Error: Unterminated string.", state.line_num);
         tokens.emplace_back(std::unexpected(err_msg));
         out_num_errs += 1;
+    } else if (holds_alternative<ParsedNum>(state.parsed)) {
+        // Not actually an error, just gotta dump the number
+        tokens.push_back(
+            NumberLiteral(std::get<ParsedNum>(state.parsed).value));
+        state.parsed = std::monostate{};
     }
 
     tokens.emplace_back(EndOfFile());

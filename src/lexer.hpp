@@ -6,6 +6,7 @@
  * (mainly as an exercise)
  **/
 
+#include <assert.h>
 #include <expected>
 #include <format>
 #include <string>
@@ -43,9 +44,6 @@ concept CharToken = Token<T> && requires {
 template <typename T>
 concept StrToken = Token<T> && requires {
     { T::LEXEME } -> std::convertible_to<std::string_view>;
-    // Make sure it's bigger than 1 char, cause in that case it would just
-    // be a CharToken innit
-    requires T::LEXEME.size() > 1;
 };
 
 #define STR_TOKEN(_name, _lexeme, _kind)                                       \
@@ -92,10 +90,34 @@ struct StringLiteral {
 };
 static_assert(Token<StringLiteral>);
 
+// Number literal
+struct NumberLiteral {
+    static constexpr std::string_view KIND = "NUMBER";
+    std::string literal;
+    double value;
+
+    NumberLiteral(std::string literal) {
+        this->literal = std::move(literal);
+        // ensure it's a valid format
+        size_t num_dots = 0;
+        for (const char& c : this->literal) {
+            if (c == '.') {
+                ++num_dots;
+            }
+        }
+        assert(num_dots <= 1);
+
+        this->value = parse_float(this->literal);
+    }
+
+    static double parse_float(std::string const& str);
+};
+static_assert(Token<NumberLiteral>);
+
 using TokenVariant =
     std::variant<LeftParen, RightParen, LeftBrace, RightBrace, Star, Dot, Comma,
                  Minus, Plus, Semicol, Assign, Bang, Equals, NotEquals, Less,
-                 Greater, LessOrEq, GreaterOrEq, Slash, EndOfFile, StringLiteral>;
+                 Greater, LessOrEq, GreaterOrEq, Slash, EndOfFile, StringLiteral, NumberLiteral>;
 
 // Ultimately, this is what lexer outputs.
 // Each entry is either a valid token, or a string with an error
@@ -130,20 +152,22 @@ bool match_char_toks(TokenList<Ts...> _tlist, char const& c,
 }
 
 template <Token T> inline string stringify_token(const T& token) {
-    // TODO value when toks have values
     return format("{}  null", T::KIND);
 }
 template <CharToken T> inline string stringify_token(const T& token) {
-    // TODO value when toks have values
     return format("{} {} null", T::KIND, T::LEXEME);
 }
 template <StrToken T> inline string stringify_token(const T& token) {
-    // TODO value when toks have values
     return format("{} {} null", T::KIND, T::LEXEME);
 }
 template<> inline string stringify_token(const StringLiteral& token) {
-    // TODO value when toks have values
     return format("{} \"{}\" {}", StringLiteral::KIND, token.literal, token.literal);
+}
+template<> inline string stringify_token(const NumberLiteral& token) {
+    const string formatted_value = token.literal.contains('.')
+        ? format("{}", token.value)
+        : format("{:.1f}", token.value);
+    return format("{} {} {}", NumberLiteral::KIND, token.literal, formatted_value);
 }
 
 // If the token matches TTok's lexeme - we advance the it iterator accordingly,
