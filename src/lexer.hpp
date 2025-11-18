@@ -164,7 +164,8 @@ template<> inline string stringify_token(const StringLiteral& token) {
     return format("{} \"{}\" {}", StringLiteral::KIND, token.literal, token.literal);
 }
 template<> inline string stringify_token(const NumberLiteral& token) {
-    const string formatted_value = token.literal.contains('.')
+    const bool is_fract_part_meaningful = (token.value - static_cast<double>(static_cast<int>(token.value))) > 0.0;
+    const string formatted_value = is_fract_part_meaningful
         ? format("{}", token.value)
         : format("{:.1f}", token.value);
     return format("{} {} {}", NumberLiteral::KIND, token.literal, formatted_value);

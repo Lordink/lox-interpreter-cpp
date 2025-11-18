@@ -89,6 +89,7 @@ struct LexerState {
     LexerState() { parsed = std::monostate{}; }
 };
 
+// TODO lookeahead parsing?
 TokenVec lex(const string& file_contents, size_t& out_num_errs) {
     TokenVariant token;
     TokenVec tokens;
