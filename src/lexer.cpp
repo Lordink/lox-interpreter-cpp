@@ -1,6 +1,3 @@
-//
-// Created by user on 16-Nov-25.
-//
 #include <assert.h>
 #include <cmath>
 #include <optional>

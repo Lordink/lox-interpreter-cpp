@@ -28,7 +28,6 @@ int main(const int argc, char *argv[]) {
 
     if (command == "tokenize") {
         string file_contents = read_file_contents(argv[2]);
-        // TODO lexer should ret num errors
         size_t num_errors = 0;
 
         const auto tokens = lex(file_contents, num_errors);
@@ -43,6 +42,9 @@ int main(const int argc, char *argv[]) {
         if (num_errors > 0) {
             return LEXICAL_ERR_RETURN_CODE;
         }
+    } else if (command == "parse") {
+        // TODO extract tokenize (above) into its own fn, so we can run it before parse()
+
     } else {
         println(stderr, "Unknown command: {}", command);
         return 1;
