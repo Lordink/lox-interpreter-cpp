@@ -5,6 +5,7 @@
 #include <print>
 
 #include "lexer.hpp"
+#include "parser.hpp"
 
 using std::string;
 using std::cin;
@@ -19,14 +20,14 @@ int main(const int argc, char *argv[]) {
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
 
-    if (argc < 3) {
-        println(stderr, "Usage: ./your_program tokenize <filename>");
-        return 1;
-    }
 
     const string command = argv[1];
 
     if (command == "tokenize") {
+        if (argc < 3) {
+            println(stderr, "Usage: ./your_program tokenize <filename>");
+            return 1;
+        }
         string file_contents = read_file_contents(argv[2]);
         size_t num_errors = 0;
 
@@ -44,6 +45,11 @@ int main(const int argc, char *argv[]) {
         }
     } else if (command == "parse") {
         // TODO extract tokenize (above) into its own fn, so we can run it before parse()
+        const auto parsed = mock_parsed();
+        Visitor_PPrint pprinter;
+        parsed->accept(pprinter);
+        // Just newline
+        println("");
 
     } else {
         println(stderr, "Unknown command: {}", command);
