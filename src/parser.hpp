@@ -125,7 +125,7 @@ struct Expr_Binary : public Expr {
     }
 };
 
-// TODO make this output string (template class?) instead?
+namespace pprint {
 class Visitor_PPrint : public Visitor {
   public:
     virtual void visit_unary(Expr_Unary const& unary) const override {
@@ -201,6 +201,7 @@ class Visitor_PPrint : public Visitor {
         std::print(" )");
     }
 };
+}; // namespace pprint
 
 // Just create a mocked expression as if we already parsed something
 // Useful to e.g. experiment with pretty-printing

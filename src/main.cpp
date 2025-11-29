@@ -46,7 +46,7 @@ int main(const int argc, char *argv[]) {
     } else if (command == "parse") {
         // TODO extract tokenize (above) into its own fn, so we can run it before parse()
         const auto parsed = mock_parsed();
-        Visitor_PPrint pprinter;
+        pprint::Visitor_PPrint pprinter;
         parsed->accept(pprinter);
         // Just newline
         println("");
