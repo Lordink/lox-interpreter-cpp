@@ -10,3 +10,14 @@ tree-walk interpreters and more.
 
 **Note**: If you're viewing this repo on GitHub, head over to
 [codecrafters.io](https://codecrafters.io) to try the challenge.
+
+### To run tests
+For simplicity, repo has empty vcpkg.json. This prevents issues on codecrafters runner side.
+To enable test configuration with Catch2, add Catch2 dep to vcpkg.json locally:
+```json
+{
+    "dependencies": [
+        "catch2"
+    ]
+}
+```
