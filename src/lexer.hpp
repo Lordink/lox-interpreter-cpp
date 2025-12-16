@@ -137,7 +137,14 @@ using TokenVariant =
 // Ultimately, this is what lexer outputs.
 // Each entry is either a valid token, or a string with an error
 // (keeping it simple for now)
-using TokenVec = std::vector<std::expected<TokenVariant, std::string>>;
+using FaultyTokenVec = std::vector<std::expected<TokenVariant, std::string>>;
+// The above can be transformed into TokenVec, which eliminates the expected<> wrapping
+using TokenVec = std::vector<TokenVariant>;
+
+// vec of expected -> expected of vecs
+// Rets string-based err on first failed token encountered
+[[nodiscard]]
+std::expected<TokenVec, std::string> lift(FaultyTokenVec const& faulty_tokens);
 
 // Template functions built for internal use
 namespace impl {
@@ -182,7 +189,7 @@ bool is_digit(const char& c) noexcept;
 // and add the token to tokens
 template <StrToken TTok>
 [[nodiscard]]
-inline bool match_str_tok(TokenVec& tokens, string::const_iterator& it,
+inline bool match_str_tok(FaultyTokenVec& tokens, string::const_iterator& it,
                           const size_t remaining_len) {
     if (TTok::LEXEME.starts_with(*it)) {
         constexpr size_t tok_len = TTok::LEXEME.size();
@@ -209,7 +216,7 @@ inline bool match_str_tok(TokenVec& tokens, string::const_iterator& it,
 // TokenVec
 template <StrToken... Ts>
 [[nodiscard]]
-constexpr bool match_str_toks(TokenList<Ts...> tlist, TokenVec& tokens,
+constexpr bool match_str_toks(TokenList<Ts...> tlist, FaultyTokenVec& tokens,
                               string::const_iterator& it, string const& str) {
     const size_t remaining_len = std::distance(it, str.end());
     return (match_str_tok<Ts>(tokens, it, remaining_len) || ...);
@@ -220,4 +227,4 @@ constexpr bool match_str_toks(TokenList<Ts...> tlist, TokenVec& tokens,
 void print_token_variant(const TokenVariant& tok);
 
 [[nodiscard]]
-TokenVec lex(const std::string& file_contents, size_t& out_num_errs);
+FaultyTokenVec lex(const std::string& file_contents, size_t& out_num_errs);

@@ -61,6 +61,19 @@ double NumberLiteral::parse_float(std::string const& str) {
     return output;
 }
 
+std::expected<TokenVec, std::string> lift(FaultyTokenVec const& faulty_tokens) {
+    TokenVec out_vec;
+    for (auto& tok : faulty_tokens) {
+        if (tok.has_value()) {
+            out_vec.push_back(tok.value());
+        } else {
+            return std::unexpected(tok.error());
+        }
+    }
+
+    return out_vec;
+}
+
 void print_token_variant(const TokenVariant& tok) {
     std::visit(
         [](const auto& token) {
@@ -112,9 +125,9 @@ bool impl::is_digit(const char& c) noexcept { return c >= '0' && c <= '9'; }
 
 // TODO lookeahead parsing?
 [[nodiscard]]
-TokenVec lex(const string& file_contents, size_t& out_num_errs) {
+FaultyTokenVec lex(const string& file_contents, size_t& out_num_errs) {
     TokenVariant token;
-    TokenVec tokens;
+    FaultyTokenVec tokens;
     // Keeping track for print errors
     LexerState state;
 

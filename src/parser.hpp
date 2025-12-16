@@ -3,11 +3,14 @@
  * Parser for the Lox interpreter
  **/
 
+#include <expected>
 #include <memory>
 #include <print>
 #include <string>
-#include <variant>
 #include <utility>
+#include <variant>
+
+#include "lexer.hpp"
 
 struct Expr_Grouping;
 struct Expr_Literal;
@@ -207,17 +210,18 @@ class Visitor_PPrint : public Visitor {
 // Just create a mocked expression as if we already parsed something
 // Useful to e.g. experiment with pretty-printing
 [[nodiscard]]
-inline ExprPtr mock_parsed() {
-    using std::make_unique;
+ExprPtr mock_parsed();
 
-    auto expr = make_unique<Expr_Binary>(
-        make_unique<Expr_Unary>(Expr_Unary::EUnaryOperator::Minus,
-                                make_unique<Expr_Literal>(123.0)),
-        Expr_Binary::EBinaryOperator::Mul,
-        make_unique<Expr_Grouping>(make_unique<Expr_Literal>(45.67)));
+namespace grammar {
+using std::expected;
+using std::pair;
+using std::string;
 
-    // auto expr = make_unique<Expr_Unary>(Expr_Unary::EUnaryOperator::Minus,
-    //     make_unique<Expr_Literal>(500.19));
+using ParseResult = expected<pair<ExprPtr, TokenVec::const_iterator>, string>;
 
-    return expr;
-}
+ParseResult expression(TokenVec::const_iterator it);
+ParseResult comparison(TokenVec::const_iterator it);
+} // namespace grammar
+
+// Parse a single expression
+std::expected<ExprPtr, std::string> parse(TokenVec const& tokens);
