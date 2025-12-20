@@ -76,8 +76,7 @@ ExprPtr mock_parsed() {
 }
 
 std::expected<ExprPtr, std::string> parse(TokenVec const& tokens) {
-    auto it = tokens.begin();
-    auto result = grammar::expression(it);
+    auto result = grammar::expression(tokens.begin(), tokens.end());
 
     return std::move(result).transform([](auto&& pair) {
         return std::move(pair.first);

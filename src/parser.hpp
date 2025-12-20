@@ -229,10 +229,10 @@ bool tok_matches_any(impl::TokenList<Ts...> tokens,
     return (tok_matches<Ts>(it) || ...);
 }
 
-ParseResult expression(TokenVec::const_iterator it, TokenVec::const_iterator const& end_it);
-ParseResult equality(TokenVec::const_iterator it, TokenVec::const_iterator const& end_it);
-ParseResult comparison(TokenVec::const_iterator it, TokenVec::const_iterator const& end_it);
-ParseResult term(TokenVec::const_iterator it, TokenVec::const_iterator const& end_it);
+ParseResult expression(TokenVec::const_iterator const& it, TokenVec::const_iterator const& end_it);
+ParseResult equality(TokenVec::const_iterator const& it, TokenVec::const_iterator const& end_it);
+ParseResult comparison(TokenVec::const_iterator const& it, TokenVec::const_iterator const& end_it);
+ParseResult term(TokenVec::const_iterator const& it, TokenVec::const_iterator const& end_it);
 } // namespace grammar
 
 // Parse a single expression
