@@ -219,8 +219,20 @@ using std::string;
 
 using ParseResult = expected<pair<ExprPtr, TokenVec::const_iterator>, string>;
 
-ParseResult expression(TokenVec::const_iterator it);
-ParseResult comparison(TokenVec::const_iterator it);
+template <Token T> bool tok_matches(TokenVec::const_iterator it) {
+    return std::holds_alternative<T>(*it);
+}
+
+template <Token... Ts>
+bool tok_matches_any(impl::TokenList<Ts...> tokens,
+                        TokenVec::const_iterator& it) {
+    return (tok_matches<Ts>(it) || ...);
+}
+
+ParseResult expression(TokenVec::const_iterator it, TokenVec::const_iterator const& end_it);
+ParseResult equality(TokenVec::const_iterator it, TokenVec::const_iterator const& end_it);
+ParseResult comparison(TokenVec::const_iterator it, TokenVec::const_iterator const& end_it);
+ParseResult term(TokenVec::const_iterator it, TokenVec::const_iterator const& end_it);
 } // namespace grammar
 
 // Parse a single expression
