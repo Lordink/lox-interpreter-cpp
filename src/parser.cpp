@@ -34,7 +34,7 @@ using EBinOp = Expr_Binary::EBinaryOperator;
 namespace grammar {
 
 ParseResult expression(TokenIter const& start_it, TokenIter const& end_it) {
-    return bounds_check(comparison, start_it, end_it);
+    return bounds_check(equality, start_it, end_it);
 }
 
 ParseResult equality(TokenIter const& start_it, TokenIter const& end_it) {
