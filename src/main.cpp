@@ -14,6 +14,8 @@ using std::println;
 string read_file_contents(const string& filename);
 
 constexpr int LEXICAL_ERR_RETURN_CODE = 65;
+constexpr int PARSE_ERR_RETURN_CODE = 70;
+
 
 int main(const int argc, char *argv[]) {
     // Disable output buffering
@@ -23,7 +25,7 @@ int main(const int argc, char *argv[]) {
 
     const string command = argv[1];
 
-    if (command == "tokenize") {
+    if (command == "tokenize" || command == "parse") {
         if (argc < 3) {
             println(stderr, "Usage: ./your_program tokenize <filename>");
             return 1;
@@ -32,9 +34,12 @@ int main(const int argc, char *argv[]) {
         size_t num_errors = 0;
 
         const auto tokens = lex(file_contents, num_errors);
+        const bool is_tokenizing = command == "tokenize";
         for (const auto& exp_tok : tokens) {
             if (exp_tok.has_value()) {
-                print_token_variant(*exp_tok);
+                if (is_tokenizing) {
+                    print_token_variant(*exp_tok);
+                }
             } else {
                 println(stderr, "{}", exp_tok.error());
             }
@@ -43,13 +48,22 @@ int main(const int argc, char *argv[]) {
         if (num_errors > 0) {
             return LEXICAL_ERR_RETURN_CODE;
         }
-    } else if (command == "parse") {
-        // TODO extract tokenize (above) into its own fn, so we can run it before parse()
-        const auto parsed = mock_parsed();
-        pprint::Visitor_PPrint pprinter;
-        parsed->accept(pprinter);
-        // Just newline
-        println("");
+
+        if (command == "parse") {
+            auto opt_token_vec = lift(tokens);
+            assert(opt_token_vec.has_value());
+
+            auto opt_parsed = parse(opt_token_vec.value());
+            if (!opt_parsed.has_value()) {
+                return PARSE_ERR_RETURN_CODE;
+            }
+            auto parsed = std::move(opt_parsed.value());
+
+            pprint::Visitor_PPrint pprinter;
+            parsed->accept(pprinter);
+            // Just newline
+            println("");
+        }
 
     } else {
         println(stderr, "Unknown command: {}", command);

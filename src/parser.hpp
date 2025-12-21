@@ -130,12 +130,14 @@ struct Expr_Binary : public Expr {
 };
 
 namespace pprint {
+using std::print;
+
 class Visitor_PPrint : public Visitor {
   public:
     virtual void visit_unary(Expr_Unary const& unary) const override {
         const char op =
             unary.op == Expr_Unary::EUnaryOperator::Minus ? '-' : '!';
-        std::print("{}", op);
+        print("{}", op);
         unary.inner->accept(*this);
     }
 
@@ -145,15 +147,20 @@ class Visitor_PPrint : public Visitor {
                 using T = std::decay_t<decltype(var)>;
                 using std::is_same_v;
                 if constexpr (is_same_v<T, Expr_Literal::Number>) {
-                    std::print("{}", var.value);
+                    // Is it a whole num?
+                    if (var.value == std::trunc(var.value)) {
+                        print("{:.1f}", var.value);
+                    } else {
+                        print("{}", var.value);
+                    }
                 } else if constexpr (is_same_v<T, Expr_Literal::String>) {
-                    std::print("{}", var.value);
+                    print("{}", var.value);
                 } else if constexpr (is_same_v<T, Expr_Literal::True>) {
-                    std::print("true");
+                    print("true");
                 } else if constexpr (is_same_v<T, Expr_Literal::False>) {
-                    std::print("false");
+                    print("false");
                 } else if constexpr (is_same_v<T, Expr_Literal::Nil>) {
-                    std::print("nil");
+                    print("nil");
                 } else {
                     std::unreachable();
                 }
@@ -162,7 +169,6 @@ class Visitor_PPrint : public Visitor {
     }
 
     virtual void visit_binary(Expr_Binary const& binary) const override {
-        binary.left->accept(*this);
         std::string op;
         switch (binary.op) {
         case Expr_Binary::EBinaryOperator::EqEq:
@@ -196,13 +202,16 @@ class Visitor_PPrint : public Visitor {
             op = "/";
             break;
         }
-        std::print(" {} ", op);
+        print("({} ", op);
+        binary.left->accept(*this);
+        print(" ");
         binary.right->accept(*this);
+        print(")");
     }
     virtual void visit_grouping(Expr_Grouping const& grouping) const override {
-        std::print("( ");
+        print("( ");
         grouping.inner->accept(*this);
-        std::print(" )");
+        print(" )");
     }
 };
 }; // namespace pprint
@@ -252,4 +261,5 @@ ParseResult primary(TokenIter const& start_it, TokenIter const& end_it);
 } // namespace grammar
 
 // Parse a single expression
+[[nodiscard]]
 std::expected<ExprPtr, std::string> parse(TokenVec const& tokens);
