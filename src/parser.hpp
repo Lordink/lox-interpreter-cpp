@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 #include <variant>
+#include <cmath>
 
 #include "lexer.hpp"
 
