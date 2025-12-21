@@ -59,7 +59,7 @@ TEST_CASE("primary() parsing", "[parser]") {
 }
 
 TEST_CASE("unary() parsing: -nil", "[parser]") {
-    TokenVec toks = { Minus(), Nil() };
+    TokenVec toks = {Minus(), Nil()};
 
     auto res = grammar::unary(toks.begin(), toks.end());
     REQUIRE(res.has_value());
@@ -75,7 +75,7 @@ TEST_CASE("unary() parsing: -nil", "[parser]") {
 }
 
 TEST_CASE("unary() parsing: !true", "[parser]") {
-    TokenVec toks = { Bang(), True() };
+    TokenVec toks = {Bang(), True()};
 
     auto res = grammar::unary(toks.begin(), toks.end());
     REQUIRE(res.has_value());
@@ -91,7 +91,7 @@ TEST_CASE("unary() parsing: !true", "[parser]") {
 }
 
 TEST_CASE("unary() parsing: -19", "[parser]") {
-    TokenVec toks = { Minus(), NumberLiteral("19") };
+    TokenVec toks = {Minus(), NumberLiteral("19")};
 
     auto res = grammar::unary(toks.begin(), toks.end());
     REQUIRE(res.has_value());
@@ -108,7 +108,7 @@ TEST_CASE("unary() parsing: -19", "[parser]") {
 }
 
 TEST_CASE("unary() parsing: 'Blah bleh'", "[parser]") {
-    TokenVec toks = { StringLiteral("Blah bleh") };
+    TokenVec toks = {StringLiteral("Blah bleh")};
 
     auto res = grammar::unary(toks.begin(), toks.end());
     REQUIRE(res.has_value());
@@ -118,10 +118,11 @@ TEST_CASE("unary() parsing: 'Blah bleh'", "[parser]") {
     auto as_literal = dynamic_cast<Expr_Literal*>(expr.get());
     REQUIRE(as_literal != nullptr);
     REQUIRE(holds_alternative<Expr_Literal::String>(as_literal->inner));
-    REQUIRE(std::get<Expr_Literal::String>(as_literal->inner).value == "Blah bleh");
+    REQUIRE(std::get<Expr_Literal::String>(as_literal->inner).value ==
+            "Blah bleh");
 }
 TEST_CASE("factor() parsing: 5 / 6", "[parser]") {
-    TokenVec toks = { NumberLiteral("5"), Slash(), NumberLiteral("6") };
+    TokenVec toks = {NumberLiteral("5"), Slash(), NumberLiteral("6")};
 
     auto res = grammar::factor(toks.begin(), toks.end());
     REQUIRE(res.has_value());
@@ -141,7 +142,8 @@ TEST_CASE("factor() parsing: 5 / 6", "[parser]") {
 }
 
 TEST_CASE("factor() parsing: -15 * 2.5", "[parser]") {
-    TokenVec toks = { Minus(), NumberLiteral("15"), Star(), NumberLiteral("2.5") };
+    TokenVec toks = {Minus(), NumberLiteral("15"), Star(),
+                     NumberLiteral("2.5")};
 
     auto res = grammar::factor(toks.begin(), toks.end());
     REQUIRE(res.has_value());
@@ -161,4 +163,64 @@ TEST_CASE("factor() parsing: -15 * 2.5", "[parser]") {
     REQUIRE(left_inner != nullptr);
     REQUIRE(std::get<Expr_Literal::Number>(left_inner->inner).value == 15.0);
     REQUIRE(std::get<Expr_Literal::Number>(right->inner).value == 2.5);
+}
+
+TEST_CASE("term() parsing: 1 - 2", "[parser]") {
+    TokenVec toks = {NumberLiteral("1"), Minus(), NumberLiteral("2")};
+
+    auto res = grammar::term(toks.begin(), toks.end());
+    REQUIRE(res.has_value());
+    auto [expr, it] = std::move(res.value());
+    CHECK(it == toks.end());
+
+    auto as_binary = dynamic_cast<Expr_Binary*>(expr.get());
+    REQUIRE(as_binary != nullptr);
+    REQUIRE(as_binary->op == EBinOp::Minus);
+    auto left = dynamic_cast<Expr_Literal*>(as_binary->left.get());
+    REQUIRE(left != nullptr);
+    auto right = dynamic_cast<Expr_Literal*>(as_binary->right.get());
+    REQUIRE(right != nullptr);
+
+    REQUIRE(std::get<Expr_Literal::Number>(left->inner).value == 1.0);
+    REQUIRE(std::get<Expr_Literal::Number>(right->inner).value == 2.0);
+}
+
+TEST_CASE("comparison() parsing: 9 >= 15", "[parser]") {
+    TokenVec toks = {NumberLiteral("9"), GreaterOrEq(), NumberLiteral("15")};
+
+    auto res = grammar::comparison(toks.begin(), toks.end());
+    REQUIRE(res.has_value());
+    auto [expr, it] = std::move(res.value());
+    CHECK(it == toks.end());
+
+    auto as_binary = dynamic_cast<Expr_Binary*>(expr.get());
+    REQUIRE(as_binary != nullptr);
+    REQUIRE(as_binary->op == EBinOp::GreaterOrEq);
+    auto left = dynamic_cast<Expr_Literal*>(as_binary->left.get());
+    REQUIRE(left != nullptr);
+    auto right = dynamic_cast<Expr_Literal*>(as_binary->right.get());
+    REQUIRE(right != nullptr);
+
+    REQUIRE(std::get<Expr_Literal::Number>(left->inner).value == 9);
+    REQUIRE(std::get<Expr_Literal::Number>(right->inner).value == 15);
+}
+
+TEST_CASE("expression() parsing: 2 + 3", "[parser]") {
+    TokenVec toks = {NumberLiteral("2"), Plus(), NumberLiteral("3")};
+
+    auto res = grammar::expression(toks.begin(), toks.end());
+    REQUIRE(res.has_value());
+    auto [expr, it] = std::move(res.value());
+    CHECK(it == toks.end());
+
+    auto as_binary = dynamic_cast<Expr_Binary*>(expr.get());
+    REQUIRE(as_binary != nullptr);
+    REQUIRE(as_binary->op == EBinOp::Plus);
+    auto left = dynamic_cast<Expr_Literal*>(as_binary->left.get());
+    REQUIRE(left != nullptr);
+    auto right = dynamic_cast<Expr_Literal*>(as_binary->right.get());
+    REQUIRE(right != nullptr);
+
+    REQUIRE(std::get<Expr_Literal::Number>(left->inner).value == 2);
+    REQUIRE(std::get<Expr_Literal::Number>(right->inner).value == 3);
 }

@@ -5,12 +5,12 @@
 #include <optional>
 
 using std::expected;
+using std::holds_alternative;
+using std::make_pair;
 using std::make_unique;
 using std::pair;
 using std::string;
 using std::unexpected;
-using std::make_pair;
-using std::holds_alternative;
 
 using namespace grammar;
 
@@ -23,12 +23,12 @@ using EBinOp = Expr_Binary::EBinaryOperator;
 // and assign parse result's iterator to `it
 // Otherwise - early return
 // Includes bounds check.
-#define UNWRAP_AND_ITER(fn, expr, it, end_it) \
-    if (auto res_tmp = bounds_check(fn, it, end_it)) { \
-        expr = std::move(res_tmp.value().first); \
-        it = res_tmp.value().second; \
-    } else { \
-        FAIL(res_tmp.error()); \
+#define UNWRAP_AND_ITER(fn, expr, it, end_it)                                  \
+    if (auto res_tmp = bounds_check(fn, it, end_it)) {                         \
+        expr = std::move(res_tmp.value().first);                               \
+        it = res_tmp.value().second;                                           \
+    } else {                                                                   \
+        FAIL(res_tmp.error());                                                 \
     }
 
 namespace grammar {
@@ -59,11 +59,49 @@ ParseResult equality(TokenIter const& start_it, TokenIter const& end_it) {
 
 ParseResult comparison(TokenIter const& start_it, TokenIter const& end_it) {
     auto it = start_it;
-    TODO;
+    static constexpr impl::TokenList<Greater, GreaterOrEq, Less, LessOrEq>
+        tok_list;
+
+    ExprPtr expr;
+    UNWRAP_AND_ITER(term, expr, it, end_it);
+    while (it < end_it && tok_matches_any(tok_list, it)) {
+
+        EBinOp op;
+        if (tok_matches<Greater>(it)) {
+            op = EBinOp::Greater;
+        } else if (tok_matches<GreaterOrEq>(it)) {
+            op = EBinOp::GreaterOrEq;
+        } else if (tok_matches<Less>(it)) {
+            op = EBinOp::Less;
+        } else {
+            op = EBinOp::LessOrEq;
+        }
+
+        it += 1;
+
+        ExprPtr right;
+        UNWRAP_AND_ITER(term, right, it, end_it);
+        expr = make_unique<Expr_Binary>(std::move(expr), op, std::move(right));
+    }
+
+    return make_pair(std::move(expr), it);
 }
 ParseResult term(TokenIter const& start_it, TokenIter const& end_it) {
     auto it = start_it;
-    TODO;
+    static constexpr impl::TokenList<Minus, Plus> tok_list;
+
+    ExprPtr expr;
+    UNWRAP_AND_ITER(factor, expr, it, end_it);
+    while (it < end_it && tok_matches_any(tok_list, it)) {
+        EBinOp op = tok_matches<Minus>(it) ? EBinOp::Minus : EBinOp::Plus;
+        it += 1;
+
+        ExprPtr right;
+        UNWRAP_AND_ITER(factor, right, it, end_it);
+        expr = make_unique<Expr_Binary>(std::move(expr), op, std::move(right));
+    }
+
+    return make_pair(std::move(expr), it);
 }
 ParseResult factor(TokenIter const& start_it, TokenIter const& end_it) {
     auto it = start_it;
@@ -81,7 +119,6 @@ ParseResult factor(TokenIter const& start_it, TokenIter const& end_it) {
     }
 
     return make_pair(std::move(expr), it);
-
 }
 ParseResult unary(TokenIter const& start_it, TokenIter const& end_it) {
     using EUnaryOp = Expr_Unary::EUnaryOperator;
@@ -102,22 +139,15 @@ ParseResult unary(TokenIter const& start_it, TokenIter const& end_it) {
     ExprPtr inner_expr;
     it += 1;
     UNWRAP_AND_ITER(unary, inner_expr, it, end_it);
-    return make_pair(
-        make_unique<Expr_Unary>(unary_op, std::move(inner_expr)),
-        it
-    );
+    return make_pair(make_unique<Expr_Unary>(unary_op, std::move(inner_expr)),
+                     it);
 }
-ParseResult primary(TokenIter const& start_it,
-                             TokenIter const& end_it) {
+ParseResult primary(TokenIter const& start_it, TokenIter const& end_it) {
     auto it = start_it;
 
     TokenVariant tok = *it;
 
-    enum class EPrimaryMatchResult {
-        Value,
-        LeftParen,
-        Other
-    };
+    enum class EPrimaryMatchResult { Value, LeftParen, Other };
 
     ExprPtr expr;
     EPrimaryMatchResult res = std::visit(
@@ -151,7 +181,7 @@ ParseResult primary(TokenIter const& start_it,
 
             return EPrimaryMatchResult::Other;
         },
-    tok);
+        tok);
 
     switch (res) {
     case EPrimaryMatchResult::Value:
@@ -180,7 +210,7 @@ ParseResult primary(TokenIter const& start_it,
     return make_pair(std::move(expr), it + 1);
 }
 
-}
+} // namespace grammar
 
 ExprPtr mock_parsed() {
     auto expr = make_unique<Expr_Binary>(
@@ -189,16 +219,12 @@ ExprPtr mock_parsed() {
         Expr_Binary::EBinaryOperator::Mul,
         make_unique<Expr_Grouping>(make_unique<Expr_Literal>(45.67)));
 
-    // auto expr = make_unique<Expr_Unary>(Expr_Unary::EUnaryOperator::Minus,
-    //     make_unique<Expr_Literal>(500.19));
-
     return expr;
 }
 
 std::expected<ExprPtr, std::string> parse(TokenVec const& tokens) {
     auto result = grammar::expression(tokens.begin(), tokens.end());
 
-    return std::move(result).transform([](auto&& pair) {
-        return std::move(pair.first);
-    });
+    return std::move(result).transform(
+        [](auto&& pair) { return std::move(pair.first); });
 }
