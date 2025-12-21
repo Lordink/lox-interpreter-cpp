@@ -13,8 +13,7 @@ using std::println;
 
 string read_file_contents(const string& filename);
 
-constexpr int LEXICAL_ERR_RETURN_CODE = 65;
-constexpr int PARSE_ERR_RETURN_CODE = 70;
+constexpr int ERR_RETURN_CODE = 65;
 
 
 int main(const int argc, char *argv[]) {
@@ -46,7 +45,7 @@ int main(const int argc, char *argv[]) {
         }
 
         if (num_errors > 0) {
-            return LEXICAL_ERR_RETURN_CODE;
+            return ERR_RETURN_CODE;
         }
 
         if (command == "parse") {
@@ -55,7 +54,9 @@ int main(const int argc, char *argv[]) {
 
             auto opt_parsed = parse(opt_token_vec.value());
             if (!opt_parsed.has_value()) {
-                return PARSE_ERR_RETURN_CODE;
+                // Line 1 hardcoded, as we parse a single expression for now
+                println("[line 1] Error at '{}': Expect expression.", opt_parsed.error());
+                return ERR_RETURN_CODE;
             }
             auto parsed = std::move(opt_parsed.value());
 

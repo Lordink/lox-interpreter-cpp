@@ -150,8 +150,9 @@ ParseResult primary(TokenIter const& start_it, TokenIter const& end_it) {
     enum class EPrimaryMatchResult { Value, LeftParen, Other };
 
     ExprPtr expr;
+    string stringified_err_tok = "TODO";
     EPrimaryMatchResult res = std::visit(
-        [&expr](auto&& var) {
+        [&expr, &stringified_err_tok](auto&& var) {
             using T = std::decay_t<decltype(var)>;
             using std::is_same_v;
 
@@ -179,6 +180,9 @@ ParseResult primary(TokenIter const& start_it, TokenIter const& end_it) {
                 return EPrimaryMatchResult::LeftParen;
             }
 
+            if constexpr (StrToken<T>) {
+                stringified_err_tok = var.LEXEME;
+            }
             return EPrimaryMatchResult::Other;
         },
         tok);
@@ -190,8 +194,7 @@ ParseResult primary(TokenIter const& start_it, TokenIter const& end_it) {
         return make_pair(std::move(expr), start_it + 1);
 
     case EPrimaryMatchResult::Other:
-        // TODO ways to format n print the actual failed value
-        FAIL("Unexpected literal when parsing primary.");
+        FAIL(std::move(stringified_err_tok));
 
     case EPrimaryMatchResult::LeftParen:
         // expr should've been left unfilled
