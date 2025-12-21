@@ -217,7 +217,8 @@ using std::expected;
 using std::pair;
 using std::string;
 
-using ParseResult = expected<pair<ExprPtr, TokenVec::const_iterator>, string>;
+using TokenIter = TokenVec::const_iterator;
+using ParseResult = expected<pair<ExprPtr, TokenIter>, string>;
 
 template <Token T> bool tok_matches(TokenVec::const_iterator it) {
     return std::holds_alternative<T>(*it);
@@ -229,10 +230,13 @@ bool tok_matches_any(impl::TokenList<Ts...> tokens,
     return (tok_matches<Ts>(it) || ...);
 }
 
-ParseResult expression(TokenVec::const_iterator const& it, TokenVec::const_iterator const& end_it);
-ParseResult equality(TokenVec::const_iterator const& it, TokenVec::const_iterator const& end_it);
-ParseResult comparison(TokenVec::const_iterator const& it, TokenVec::const_iterator const& end_it);
-ParseResult term(TokenVec::const_iterator const& it, TokenVec::const_iterator const& end_it);
+
+ParseResult expression(TokenIter const& start_it, TokenIter const& end_it);
+ParseResult equality(TokenIter const& start_it, TokenIter const& end_it);
+ParseResult comparison(TokenIter const& start_it, TokenIter const& end_it);
+ParseResult term(TokenIter const& start_it, TokenIter const& end_it);
+
+ParseResult primary(TokenIter const& start_it, TokenIter const& end_it);
 } // namespace grammar
 
 // Parse a single expression
