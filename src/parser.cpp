@@ -212,6 +212,85 @@ ParseResult primary(TokenIter const& start_it, TokenIter const& end_it) {
 
 } // namespace grammar
 
+void pprint::Visitor_PPrint::visit_unary(Expr_Unary const& unary) const {
+    const char op = unary.op == Expr_Unary::EUnaryOperator::Minus ? '-' : '!';
+    print("({} ", op);
+    unary.inner->accept(*this);
+    print(")");
+}
+void pprint::Visitor_PPrint::visit_literal(Expr_Literal const& literal) const {
+    std::visit(
+        [](auto&& var) {
+            using T = std::decay_t<decltype(var)>;
+            using std::is_same_v;
+            if constexpr (is_same_v<T, Expr_Literal::Number>) {
+                // Is it a whole num?
+                if (var.value == std::trunc(var.value)) {
+                    print("{:.1f}", var.value);
+                } else {
+                    print("{}", var.value);
+                }
+            } else if constexpr (is_same_v<T, Expr_Literal::String>) {
+                print("{}", var.value);
+            } else if constexpr (is_same_v<T, Expr_Literal::True>) {
+                print("true");
+            } else if constexpr (is_same_v<T, Expr_Literal::False>) {
+                print("false");
+            } else if constexpr (is_same_v<T, Expr_Literal::Nil>) {
+                print("nil");
+            } else {
+                std::unreachable();
+            }
+        },
+        literal.inner);
+}
+void pprint::Visitor_PPrint::visit_binary(Expr_Binary const& binary) const {
+    std::string op;
+    switch (binary.op) {
+    case Expr_Binary::EBinaryOperator::EqEq:
+        op = "==";
+        break;
+    case Expr_Binary::EBinaryOperator::NotEq:
+        op = "!=";
+        break;
+    case Expr_Binary::EBinaryOperator::Less:
+        op = "<";
+        break;
+    case Expr_Binary::EBinaryOperator::LessOrEq:
+        op = "<=";
+        break;
+    case Expr_Binary::EBinaryOperator::Greater:
+        op = ">";
+        break;
+    case Expr_Binary::EBinaryOperator::GreaterOrEq:
+        op = ">=";
+        break;
+    case Expr_Binary::EBinaryOperator::Plus:
+        op = "+";
+        break;
+    case Expr_Binary::EBinaryOperator::Minus:
+        op = "-";
+        break;
+    case Expr_Binary::EBinaryOperator::Mul:
+        op = "*";
+        break;
+    case Expr_Binary::EBinaryOperator::Div:
+        op = "/";
+        break;
+    }
+    print("({} ", op);
+    binary.left->accept(*this);
+    print(" ");
+    binary.right->accept(*this);
+    print(")");
+}
+void pprint::Visitor_PPrint::visit_grouping(
+    Expr_Grouping const& grouping) const {
+    print("(group ");
+    grouping.inner->accept(*this);
+    print(")");
+}
+
 ExprPtr mock_parsed() {
     auto expr = make_unique<Expr_Binary>(
         make_unique<Expr_Unary>(Expr_Unary::EUnaryOperator::Minus,
