@@ -55,7 +55,7 @@ int main(const int argc, char *argv[]) {
             auto opt_parsed = parse(opt_token_vec.value());
             if (!opt_parsed.has_value()) {
                 // Line 1 hardcoded, as we parse a single expression for now
-                println("[line 1] Error at '{}': Expect expression.", opt_parsed.error());
+                println(stderr, "[line 1] Error at '{}': Expect expression.", opt_parsed.error());
                 return ERR_RETURN_CODE;
             }
             auto parsed = std::move(opt_parsed.value());
