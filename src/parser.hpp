@@ -230,12 +230,24 @@ bool tok_matches_any(impl::TokenList<Ts...> tokens,
     return (tok_matches<Ts>(it) || ...);
 }
 
+// "Decorate" a function with an iterator bounds check
+// If all g, pass thru the iterators
+template<typename F>
+ParseResult bounds_check(F&& fn, TokenIter const& start_it, TokenIter const& end_it) {
+    if (start_it >= end_it) {
+        return std::unexpected("Reached end iterator");
+    }
+
+    return fn(start_it, end_it);
+}
 
 ParseResult expression(TokenIter const& start_it, TokenIter const& end_it);
 ParseResult equality(TokenIter const& start_it, TokenIter const& end_it);
 ParseResult comparison(TokenIter const& start_it, TokenIter const& end_it);
 ParseResult term(TokenIter const& start_it, TokenIter const& end_it);
 
+ParseResult factor(TokenIter const& start_it, TokenIter const& end_it);
+ParseResult unary(TokenIter const& start_it, TokenIter const& end_it);
 ParseResult primary(TokenIter const& start_it, TokenIter const& end_it);
 } // namespace grammar
 

@@ -1,6 +1,7 @@
 #include "parser.hpp"
 #include "lexer.hpp"
 
+#include <functional>
 #include <optional>
 
 using std::expected;
@@ -9,8 +10,11 @@ using std::pair;
 using std::string;
 using std::unexpected;
 using std::make_pair;
+using std::holds_alternative;
 
 using namespace grammar;
+
+using EBinOp = Expr_Binary::EBinaryOperator;
 
 #define FAIL(err) return std::unexpected(err)
 #define TODO FAIL("TODO")
@@ -18,8 +22,9 @@ using namespace grammar;
 // Put successful parse result ExprPtr into `expr`,
 // and assign parse result's iterator to `it
 // Otherwise - early return
-#define UNWRAP_AND_ITER(parse_result, expr, it) \
-    if (auto res_tmp = parse_result) { \
+// Includes bounds check.
+#define UNWRAP_AND_ITER(fn, expr, it, end_it) \
+    if (auto res_tmp = bounds_check(fn, it, end_it)) { \
         expr = std::move(res_tmp.value().first); \
         it = res_tmp.value().second; \
     } else { \
@@ -28,30 +33,24 @@ using namespace grammar;
 
 namespace grammar {
 
-
-ParseResult expression(TokenIter const& it, TokenIter const& end_it) {
-    return comparison(it, end_it);
+ParseResult expression(TokenIter const& start_it, TokenIter const& end_it) {
+    return bounds_check(comparison, start_it, end_it);
 }
 
 ParseResult equality(TokenIter const& start_it, TokenIter const& end_it) {
     static constexpr impl::TokenList<Equals, NotEquals> tok_list;
-    using EOp = Expr_Binary::EBinaryOperator;
 
     // Copying in
     auto it = start_it;
     ExprPtr expr;
-    UNWRAP_AND_ITER(comparison(it, end_it), expr, it);
+    UNWRAP_AND_ITER(comparison, expr, it, end_it);
 
     while (it < end_it && tok_matches_any(tok_list, it)) {
-        EOp op = tok_matches<Equals>(it) ? EOp::EqEq : EOp::NotEq;
+        EBinOp op = tok_matches<Equals>(it) ? EBinOp::EqEq : EBinOp::NotEq;
         it += 1;
-        // TODO may not be needed if comparison etc are properly impl'd
-        if (it >= end_it) {
-            FAIL("Ran out of token list when matching for equality");
-        }
 
         ExprPtr right;
-        UNWRAP_AND_ITER(comparison(it, end_it), right, it);
+        UNWRAP_AND_ITER(comparison, right, it, end_it);
         expr = make_unique<Expr_Binary>(std::move(expr), op, std::move(right));
     }
 
@@ -59,13 +58,57 @@ ParseResult equality(TokenIter const& start_it, TokenIter const& end_it) {
 }
 
 ParseResult comparison(TokenIter const& start_it, TokenIter const& end_it) {
+    auto it = start_it;
     TODO;
+}
+ParseResult term(TokenIter const& start_it, TokenIter const& end_it) {
+    auto it = start_it;
+    TODO;
+}
+ParseResult factor(TokenIter const& start_it, TokenIter const& end_it) {
+    auto it = start_it;
+    static constexpr impl::TokenList<Slash, Star> tok_list;
+
+    ExprPtr expr;
+    UNWRAP_AND_ITER(unary, expr, it, end_it);
+    while (it < end_it && tok_matches_any(tok_list, it)) {
+        EBinOp op = tok_matches<Slash>(it) ? EBinOp::Div : EBinOp::Mul;
+        it += 1;
+
+        ExprPtr right;
+        UNWRAP_AND_ITER(unary, right, it, end_it);
+        expr = make_unique<Expr_Binary>(std::move(expr), op, std::move(right));
+    }
+
+    return make_pair(std::move(expr), it);
+
+}
+ParseResult unary(TokenIter const& start_it, TokenIter const& end_it) {
+    using EUnaryOp = Expr_Unary::EUnaryOperator;
+    auto it = start_it;
+
+    TokenVariant tok = *it;
+
+    EUnaryOp unary_op;
+    if (holds_alternative<Bang>(tok)) {
+        unary_op = EUnaryOp::Bang;
+    } else if (holds_alternative<Minus>(tok)) {
+        unary_op = EUnaryOp::Minus;
+    } else {
+        // Just pass thru should be sufficient
+        // NOTE: not applying bounds check, cause we haven't moved iterator
+        return primary(it, end_it);
+    }
+    ExprPtr inner_expr;
+    it += 1;
+    UNWRAP_AND_ITER(unary, inner_expr, it, end_it);
+    return make_pair(
+        make_unique<Expr_Unary>(unary_op, std::move(inner_expr)),
+        it
+    );
 }
 ParseResult primary(TokenIter const& start_it,
                              TokenIter const& end_it) {
-    if (start_it >= end_it) {
-        FAIL("Reached end iterator");
-    }
     auto it = start_it;
 
     TokenVariant tok = *it;
@@ -127,7 +170,7 @@ ParseResult primary(TokenIter const& start_it,
     }
 
     it += 1;
-    UNWRAP_AND_ITER(expression(it, end_it), expr, it);
+    UNWRAP_AND_ITER(expression, expr, it, end_it);
 
     // Next one should be right paren
     if (!std::holds_alternative<RightParen>(*it)) {
