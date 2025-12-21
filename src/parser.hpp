@@ -138,8 +138,9 @@ class Visitor_PPrint : public Visitor {
     virtual void visit_unary(Expr_Unary const& unary) const override {
         const char op =
             unary.op == Expr_Unary::EUnaryOperator::Minus ? '-' : '!';
-        print("{}", op);
+        print("({} ", op);
         unary.inner->accept(*this);
+        print(")");
     }
 
     virtual void visit_literal(Expr_Literal const& literal) const override {
