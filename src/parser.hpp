@@ -210,9 +210,9 @@ class Visitor_PPrint : public Visitor {
         print(")");
     }
     virtual void visit_grouping(Expr_Grouping const& grouping) const override {
-        print("( ");
+        print("(group ");
         grouping.inner->accept(*this);
-        print(" )");
+        print(")");
     }
 };
 }; // namespace pprint

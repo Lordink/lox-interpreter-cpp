@@ -206,8 +206,8 @@ ParseResult primary(TokenIter const& start_it, TokenIter const& end_it) {
     if (!std::holds_alternative<RightParen>(*it)) {
         FAIL("After parsing expression in primary(), expected a right paren");
     }
-
-    return make_pair(std::move(expr), it + 1);
+    // wrap into grouping
+    return make_pair(make_unique<Expr_Grouping>(std::move(expr)), it + 1);
 }
 
 } // namespace grammar
