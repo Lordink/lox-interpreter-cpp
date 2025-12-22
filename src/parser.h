@@ -10,27 +10,31 @@
 #include <utility>
 #include <variant>
 
-#include "lexer.hpp"
+#include "lexer.h"
+#include "runtime.h"
 
 struct Expr_Grouping;
 struct Expr_Literal;
 struct Expr_Unary;
 struct Expr_Binary;
 
+template<typename RetVal>
 class Visitor {
   public:
-    virtual void visit_literal(Expr_Literal const& literal) const = 0;
-    virtual void visit_grouping(Expr_Grouping const& grouping) const = 0;
-    virtual void visit_unary(Expr_Unary const& unary) const = 0;
-    virtual void visit_binary(Expr_Binary const& binary) const = 0;
+    virtual RetVal visit_literal(Expr_Literal const& literal) const = 0;
+    virtual RetVal visit_grouping(Expr_Grouping const& grouping) const = 0;
+    virtual RetVal visit_unary(Expr_Unary const& unary) const = 0;
+    virtual RetVal visit_binary(Expr_Binary const& binary) const = 0;
 
     virtual ~Visitor() = default;
 };
 
 // Root expression type
 struct Expr {
-    // Accepting visitor pattern
-    virtual void accept(Visitor const& visitor) const = 0;
+    // Visitor that doesn't return anything
+    virtual void accept(Visitor<void> const& visitor) const = 0;
+    // Visitor returning runtime value
+    virtual rt::Value accept(Visitor<rt::Value> const& visitor) const = 0;
 
     virtual ~Expr() = default;
 };
@@ -57,8 +61,11 @@ struct Expr_Literal : public Expr {
     explicit Expr_Literal(const double num) : inner(Number(num)) {}
     explicit Expr_Literal(std::string s) : inner(String(std::move(s))) {}
 
-    virtual void accept(Visitor const& visitor) const override {
+    virtual void accept(Visitor<void> const& visitor) const override {
         visitor.visit_literal(*this);
+    }
+    virtual rt::Value accept(Visitor<rt::Value> const& visitor) const override {
+        return visitor.visit_literal(*this);
     }
 };
 
@@ -69,8 +76,11 @@ struct Expr_Grouping : public Expr {
 
     explicit Expr_Grouping(ExprPtr inner) : inner(std::move(inner)) {}
 
-    virtual void accept(Visitor const& visitor) const override {
+    virtual void accept(Visitor<void> const& visitor) const override {
         visitor.visit_grouping(*this);
+    }
+    virtual rt::Value accept(Visitor<rt::Value> const& visitor) const override {
+        return visitor.visit_grouping(*this);
     }
 };
 
@@ -88,8 +98,11 @@ struct Expr_Unary : public Expr {
     explicit Expr_Unary(const EUnaryOperator op, ExprPtr inner)
         : op(op), inner(std::move(inner)) {}
 
-    virtual void accept(Visitor const& visitor) const override {
+    virtual void accept(Visitor<void> const& visitor) const override {
         visitor.visit_unary(*this);
+    }
+    virtual rt::Value accept(Visitor<rt::Value> const& visitor) const override {
+        return visitor.visit_unary(*this);
     }
 };
 
@@ -124,15 +137,18 @@ struct Expr_Binary : public Expr {
     explicit Expr_Binary(ExprPtr left, const EBinaryOperator op, ExprPtr right)
         : left(std::move(left)), op(op), right(std::move(right)) {}
 
-    virtual void accept(Visitor const& visitor) const override {
+    virtual void accept(Visitor<void> const& visitor) const override {
         visitor.visit_binary(*this);
+    }
+    virtual rt::Value accept(Visitor<rt::Value> const& visitor) const override {
+        return visitor.visit_binary(*this);
     }
 };
 
 namespace pprint {
 using std::print;
 
-class Visitor_PPrint : public Visitor {
+class Visitor_PPrint : public Visitor<void> {
   public:
     virtual void visit_unary(Expr_Unary const& unary) const override;
     virtual void visit_literal(Expr_Literal const& literal) const override;

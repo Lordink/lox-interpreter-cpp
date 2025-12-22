@@ -1,5 +1,5 @@
+#include "../src/lexer.h"
 #include <catch2/catch_test_macros.hpp>
-#include "../src/lexer.hpp"
 
 TEST_CASE("Lexing empty string", "[lexer]") {
     const std::string in = "";

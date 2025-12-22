@@ -1,7 +1,7 @@
-#include "evaluator.hpp"
+#include "evaluator.h"
 
 namespace eval {
-void Visitor_Eval::visit_literal(Expr_Literal const& literal) const {
+Value Visitor_Eval::visit_literal(Expr_Literal const& literal) const {
     std::visit(
         [this](auto&& var) {
             using T = std::decay_t<decltype(var)>;
@@ -16,5 +16,7 @@ void Visitor_Eval::visit_literal(Expr_Literal const& literal) const {
             }
         },
         literal.inner);
+
+    return monostate();
 }
 }

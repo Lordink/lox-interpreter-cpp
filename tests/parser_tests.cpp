@@ -2,7 +2,7 @@
 #include <catch2/generators/catch_generators.hpp>
 #include <functional>
 
-#include "../src/parser.hpp"
+#include "../src/parser.h"
 
 using std::function;
 using std::holds_alternative;

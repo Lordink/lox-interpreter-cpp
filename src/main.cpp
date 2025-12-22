@@ -4,12 +4,13 @@
 #include <string>
 #include <print>
 
-#include "lexer.hpp"
-#include "parser.hpp"
+#include "lexer.h"
+#include "parser.h"
 
-using std::string;
+using std::cin;
 using std::cin;
 using std::println;
+using std::string;
 
 string read_file_contents(const string& filename);
 

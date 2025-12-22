@@ -1,10 +1,9 @@
-#include <assert.h>
 #include <cmath>
 #include <optional>
 #include <print>
 #include <unordered_set>
 
-#include "lexer.hpp"
+#include "lexer.h"
 
 using impl::TokenList;
 using std::format;
