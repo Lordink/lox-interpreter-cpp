@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <optional>
+#include <cmath>
 
 using std::expected;
 using std::holds_alternative;
@@ -292,16 +293,6 @@ void pprint::Visitor_PPrint::visit_grouping(
     print("(group ");
     grouping.inner->accept(*this);
     print(")");
-}
-
-ExprPtr mock_parsed() {
-    auto expr = make_unique<Expr_Binary>(
-        make_unique<Expr_Unary>(Expr_Unary::EUnaryOperator::Minus,
-                                make_unique<Expr_Literal>(123.0)),
-        Expr_Binary::EBinaryOperator::Mul,
-        make_unique<Expr_Grouping>(make_unique<Expr_Literal>(45.67)));
-
-    return expr;
 }
 
 std::expected<ExprPtr, std::string> parse(TokenVec const& tokens) {

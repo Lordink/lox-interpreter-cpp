@@ -9,7 +9,6 @@
 #include <string>
 #include <utility>
 #include <variant>
-#include <cmath>
 
 #include "lexer.hpp"
 
@@ -141,11 +140,6 @@ class Visitor_PPrint : public Visitor {
     virtual void visit_grouping(Expr_Grouping const& grouping) const override;
 };
 }; // namespace pprint
-
-// Just create a mocked expression as if we already parsed something
-// Useful to e.g. experiment with pretty-printing
-[[nodiscard]]
-ExprPtr mock_parsed();
 
 namespace grammar {
 using std::expected;
