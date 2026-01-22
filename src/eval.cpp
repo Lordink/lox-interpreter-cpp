@@ -1,4 +1,5 @@
-#include "evaluator.h"
+#include "eval.h"
+#include <stdexcept>
 
 namespace eval {
 Value Visitor_Eval::visit_literal(Expr_Literal const& literal) const {
@@ -19,4 +20,9 @@ Value Visitor_Eval::visit_literal(Expr_Literal const& literal) const {
 
     return monostate();
 }
+
+std::expected<Value, string> evaluate(ExprPtr ast) {
+    throw std::logic_error("Unimplemented");
 }
+
+} // namespace eval

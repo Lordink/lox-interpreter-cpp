@@ -2,14 +2,11 @@
 #include "lexer.h"
 
 #include <cmath>
-#include <functional>
-#include <optional>
 
 using std::expected;
 using std::holds_alternative;
 using std::make_pair;
 using std::make_unique;
-using std::pair;
 using std::string;
 using std::unexpected;
 

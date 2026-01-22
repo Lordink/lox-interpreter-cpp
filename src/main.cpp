@@ -1,14 +1,14 @@
 #include <fstream>
 #include <iostream>
+#include <print>
 #include <sstream>
 #include <string>
-#include <print>
 
+#include "eval.h"
 #include "lexer.h"
 #include "parser.h"
+#include "runtime.h"
 
-using std::cin;
-using std::cin;
 using std::println;
 using std::string;
 
@@ -16,18 +16,16 @@ string read_file_contents(const string& filename);
 
 constexpr int ERR_RETURN_CODE = 65;
 
-
-int main(const int argc, char *argv[]) {
+int main(const int argc, char* argv[]) {
     // Disable output buffering
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
 
-
     const string command = argv[1];
 
-    if (command == "tokenize" || command == "parse") {
+    if (command == "tokenize" || command == "parse" || command == "evaluate") {
         if (argc < 3) {
-            println(stderr, "Usage: ./your_program tokenize <filename>");
+            println(stderr, "Usage: ./your_program {} <filename>", command);
             return 1;
         }
         string file_contents = read_file_contents(argv[2]);
@@ -47,24 +45,42 @@ int main(const int argc, char *argv[]) {
 
         if (num_errors > 0) {
             return ERR_RETURN_CODE;
+        } else if (command == "tokenize") {
+            // We are done
+            return 0;
         }
 
+        // Parsing
+        auto opt_token_vec = lift(tokens);
+        assert(opt_token_vec.has_value());
+
+        auto opt_parsed = parse(opt_token_vec.value());
+        if (!opt_parsed.has_value()) {
+            // Line 1 hardcoded, as we parse a single expression for now
+            println(stderr, "[line 1] Error at '{}': Expect expression.",
+                    opt_parsed.error());
+            return ERR_RETURN_CODE;
+        }
+        auto parsed = std::move(opt_parsed.value());
+
         if (command == "parse") {
-            auto opt_token_vec = lift(tokens);
-            assert(opt_token_vec.has_value());
-
-            auto opt_parsed = parse(opt_token_vec.value());
-            if (!opt_parsed.has_value()) {
-                // Line 1 hardcoded, as we parse a single expression for now
-                println(stderr, "[line 1] Error at '{}': Expect expression.", opt_parsed.error());
-                return ERR_RETURN_CODE;
-            }
-            auto parsed = std::move(opt_parsed.value());
-
             pprint::Visitor_PPrint pprinter;
             parsed->accept(pprinter);
             // Just newline
             println("");
+            return 0;
+        }
+
+        // Eval
+        if (command == "evaluate") {
+            auto value = eval::evaluate(std::move(parsed));
+            if (value.has_value()) {
+                // TODO print value
+                rt::print_value(value.value());
+                return 0;
+            } else {
+                return ERR_RETURN_CODE;
+            }
         }
 
     } else {
