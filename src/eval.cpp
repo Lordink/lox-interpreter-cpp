@@ -51,21 +51,32 @@ Value Visitor_Eval::visit_unary(Expr_Unary const& unary) const {
     }
 }
 Value Visitor_Eval::visit_binary(Expr_Binary const& binary) const {
-    bool is_arithmetic;
+    enum class EOperationKind { Arithmetic, StrConcat, Boolean };
+    EOperationKind op_kind;
+
+    const Value left_v = binary.left->accept(*this);
+    const Value right_v = binary.right->accept(*this);
+
     switch (binary.op) {
     case Expr_Binary::EBinaryOperator::Plus:
+        // Both are strings
+        if (holds_alternative<string>(left_v) &&
+            holds_alternative<string>(right_v)) {
+            op_kind = EOperationKind::StrConcat;
+            break;
+        }
     case Expr_Binary::EBinaryOperator::Minus:
     case Expr_Binary::EBinaryOperator::Mul:
     case Expr_Binary::EBinaryOperator::Div:
-        is_arithmetic = true;
+        op_kind = EOperationKind::Arithmetic;
         break;
     default:
-        is_arithmetic = false;
+        op_kind = EOperationKind::Boolean;
     }
 
-    if (is_arithmetic) {
-        const double left = std::get<double>(binary.left->accept(*this));
-        const double right = std::get<double>(binary.right->accept(*this));
+    if (op_kind == EOperationKind::Arithmetic) {
+        const double left = std::get<double>(left_v);
+        const double right = std::get<double>(right_v);
 
         switch (binary.op) {
         case Expr_Binary::EBinaryOperator::Plus:
@@ -79,6 +90,11 @@ Value Visitor_Eval::visit_binary(Expr_Binary const& binary) const {
         default:
             std::unreachable();
         }
+    } else if (op_kind == EOperationKind::StrConcat) {
+        const string left = std::get<string>(left_v);
+        const string right = std::get<string>(right_v);
+
+        return left + right;
     } else {
         throw std::runtime_error("Unimplemented!");
     }
