@@ -41,6 +41,9 @@ Value Visitor_Eval::visit_unary(Expr_Unary const& unary) const {
             return !std::get<bool>(inner_val);
         } else if (holds_alternative<std::monostate>(inner_val)) {
             return true;
+        } else if (holds_alternative<double>(inner_val)) {
+            // Negating any number is false-ey, incl 0
+            return false;
         } else {
             throw std::runtime_error("Unexpected unary type");
         }
