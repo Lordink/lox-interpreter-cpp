@@ -3,6 +3,8 @@
 #include <stdexcept>
 #include <variant>
 
+using std::holds_alternative;
+
 namespace eval {
 Value Visitor_Eval::visit_literal(Expr_Literal const& literal) const {
     return std::visit(
@@ -35,7 +37,13 @@ Value Visitor_Eval::visit_unary(Expr_Unary const& unary) const {
         // Should never fail
         return -1.0 * std::get<double>(inner_val);
     case Expr_Unary::EUnaryOperator::Bang:
-        return !std::get<bool>(inner_val);
+        if (holds_alternative<bool>(inner_val)) {
+            return !std::get<bool>(inner_val);
+        } else if (holds_alternative<std::monostate>(inner_val)) {
+            return true;
+        } else {
+            throw std::runtime_error("Unexpected unary type");
+        }
     }
 }
 Value Visitor_Eval::visit_binary(Expr_Binary const& binary) const {
