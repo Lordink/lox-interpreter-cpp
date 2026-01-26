@@ -29,8 +29,14 @@ Value Visitor_Eval::visit_literal(Expr_Literal const& literal) const {
 }
 
 Value Visitor_Eval::visit_unary(Expr_Unary const& unary) const {
-    throw std::logic_error("Unimplemented");
-    return std::monostate{};
+    const Value inner_val = unary.inner->accept(*this);
+    switch (unary.op) {
+    case Expr_Unary::EUnaryOperator::Minus:
+        // Should never fail
+        return -1.0 * std::get<double>(inner_val);
+    case Expr_Unary::EUnaryOperator::Bang:
+        return !std::get<bool>(inner_val);
+    }
 }
 Value Visitor_Eval::visit_binary(Expr_Binary const& binary) const {
 
