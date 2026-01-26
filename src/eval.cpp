@@ -38,9 +38,7 @@ Value Visitor_Eval::visit_binary(Expr_Binary const& binary) const {
     return std::monostate{};
 }
 Value Visitor_Eval::visit_grouping(Expr_Grouping const& grouping) const {
-
-    throw std::logic_error("Unimplemented");
-    return std::monostate{};
+    return grouping.inner->accept(*this);
 }
 
 std::expected<Value, string> evaluate(ExprPtr ast) {
