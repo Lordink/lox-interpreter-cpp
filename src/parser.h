@@ -18,8 +18,9 @@ struct Expr_Literal;
 struct Expr_Unary;
 struct Expr_Binary;
 
-template<typename RetVal>
-class Visitor {
+using ValueResult = std::expected<rt::Value, std::string>;
+
+template <typename RetVal> class Visitor {
   public:
     virtual RetVal visit_literal(Expr_Literal const& literal) const = 0;
     virtual RetVal visit_grouping(Expr_Grouping const& grouping) const = 0;
@@ -34,7 +35,7 @@ struct Expr {
     // Visitor that doesn't return anything
     virtual void accept(Visitor<void> const& visitor) const = 0;
     // Visitor returning runtime value
-    virtual rt::Value accept(Visitor<rt::Value> const& visitor) const = 0;
+    virtual ValueResult accept(Visitor<ValueResult> const& visitor) const = 0;
 
     virtual ~Expr() = default;
 };
@@ -64,7 +65,8 @@ struct Expr_Literal : public Expr {
     virtual void accept(Visitor<void> const& visitor) const override {
         visitor.visit_literal(*this);
     }
-    virtual rt::Value accept(Visitor<rt::Value> const& visitor) const override {
+    virtual ValueResult
+    accept(Visitor<ValueResult> const& visitor) const override {
         return visitor.visit_literal(*this);
     }
 };
@@ -79,7 +81,8 @@ struct Expr_Grouping : public Expr {
     virtual void accept(Visitor<void> const& visitor) const override {
         visitor.visit_grouping(*this);
     }
-    virtual rt::Value accept(Visitor<rt::Value> const& visitor) const override {
+    virtual ValueResult
+    accept(Visitor<ValueResult> const& visitor) const override {
         return visitor.visit_grouping(*this);
     }
 };
@@ -101,7 +104,8 @@ struct Expr_Unary : public Expr {
     virtual void accept(Visitor<void> const& visitor) const override {
         visitor.visit_unary(*this);
     }
-    virtual rt::Value accept(Visitor<rt::Value> const& visitor) const override {
+    virtual ValueResult
+    accept(Visitor<ValueResult> const& visitor) const override {
         return visitor.visit_unary(*this);
     }
 };
@@ -140,7 +144,8 @@ struct Expr_Binary : public Expr {
     virtual void accept(Visitor<void> const& visitor) const override {
         visitor.visit_binary(*this);
     }
-    virtual rt::Value accept(Visitor<rt::Value> const& visitor) const override {
+    virtual ValueResult
+    accept(Visitor<ValueResult> const& visitor) const override {
         return visitor.visit_binary(*this);
     }
 };
@@ -171,14 +176,15 @@ template <Token T> bool tok_matches(TokenVec::const_iterator it) {
 
 template <Token... Ts>
 bool tok_matches_any(impl::TokenList<Ts...> tokens,
-                        TokenVec::const_iterator& it) {
+                     TokenVec::const_iterator& it) {
     return (tok_matches<Ts>(it) || ...);
 }
 
 // "Decorate" a function with an iterator bounds check
 // If all g, pass thru the iterators
-template<typename F>
-ParseResult bounds_check(F&& fn, TokenIter const& start_it, TokenIter const& end_it) {
+template <typename F>
+ParseResult bounds_check(F&& fn, TokenIter const& start_it,
+                         TokenIter const& end_it) {
     if (start_it >= end_it) {
         return std::unexpected("Reached end iterator");
     }

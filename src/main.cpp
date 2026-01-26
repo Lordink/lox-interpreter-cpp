@@ -14,7 +14,8 @@ using std::string;
 
 string read_file_contents(const string& filename);
 
-constexpr int ERR_RETURN_CODE = 65;
+constexpr int INTERP_ERR_RETURN_CODE = 65;
+constexpr int RUNTIME_ERR_RETURN_CODE = 70;
 
 int main(const int argc, char* argv[]) {
     // Disable output buffering
@@ -44,7 +45,7 @@ int main(const int argc, char* argv[]) {
         }
 
         if (num_errors > 0) {
-            return ERR_RETURN_CODE;
+            return INTERP_ERR_RETURN_CODE;
         } else if (command == "tokenize") {
             // We are done
             return 0;
@@ -59,7 +60,7 @@ int main(const int argc, char* argv[]) {
             // Line 1 hardcoded, as we parse a single expression for now
             println(stderr, "[line 1] Error at '{}': Expect expression.",
                     opt_parsed.error());
-            return ERR_RETURN_CODE;
+            return INTERP_ERR_RETURN_CODE;
         }
         auto parsed = std::move(opt_parsed.value());
 
@@ -79,7 +80,8 @@ int main(const int argc, char* argv[]) {
                 rt::print_value(value.value());
                 return 0;
             } else {
-                return ERR_RETURN_CODE;
+                println(stderr, "{}\n[line 1]", value.error());
+                return RUNTIME_ERR_RETURN_CODE;
             }
         }
 

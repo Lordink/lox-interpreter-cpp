@@ -8,7 +8,7 @@
 using std::holds_alternative;
 
 namespace eval {
-Value Visitor_Eval::visit_literal(Expr_Literal const& literal) const {
+ValueResult Visitor_Eval::visit_literal(Expr_Literal const& literal) const {
     return std::visit(
         [this](auto&& var) -> Value {
             using T = std::decay_t<decltype(var)>;
@@ -32,12 +32,21 @@ Value Visitor_Eval::visit_literal(Expr_Literal const& literal) const {
         literal.inner);
 }
 
-Value Visitor_Eval::visit_unary(Expr_Unary const& unary) const {
-    const Value inner_val = unary.inner->accept(*this);
+ValueResult Visitor_Eval::visit_unary(Expr_Unary const& unary) const {
+    const ValueResult res_inner_val = unary.inner->accept(*this);
+    if (!res_inner_val) {
+        return res_inner_val.error();
+    }
+
+    const Value inner_val = res_inner_val.value();
     switch (unary.op) {
     case Expr_Unary::EUnaryOperator::Minus:
         // Should never fail
-        return -1.0 * std::get<double>(inner_val);
+        if (holds_alternative<double>(inner_val)) {
+            return -1.0 * std::get<double>(inner_val);
+        } else {
+            return std::unexpected("Operand must be a number");
+        }
     case Expr_Unary::EUnaryOperator::Bang:
         if (holds_alternative<bool>(inner_val)) {
             return !std::get<bool>(inner_val);
@@ -62,12 +71,20 @@ double binary_value(Value const& val) {
     }
 }
 
-Value Visitor_Eval::visit_binary(Expr_Binary const& binary) const {
+ValueResult Visitor_Eval::visit_binary(Expr_Binary const& binary) const {
     enum class EOperationKind { Arithmetic, StrConcat, Cmp, Relation };
     EOperationKind op_kind;
 
-    const Value left_v = binary.left->accept(*this);
-    const Value right_v = binary.right->accept(*this);
+    const ValueResult res_left_v = binary.left->accept(*this);
+    if (!res_left_v) {
+        return res_left_v.error();
+    }
+    const Value left_v = res_left_v.value();
+    const ValueResult res_right_v = binary.right->accept(*this);
+    if (!res_right_v) {
+        return res_right_v.error();
+    }
+    const Value right_v = res_right_v.value();
 
     switch (binary.op) {
     case Expr_Binary::EBinaryOperator::Plus:
@@ -169,7 +186,7 @@ Value Visitor_Eval::visit_binary(Expr_Binary const& binary) const {
 
     throw std::runtime_error("Unexpected control path");
 }
-Value Visitor_Eval::visit_grouping(Expr_Grouping const& grouping) const {
+ValueResult Visitor_Eval::visit_grouping(Expr_Grouping const& grouping) const {
     return grouping.inner->accept(*this);
 }
 
