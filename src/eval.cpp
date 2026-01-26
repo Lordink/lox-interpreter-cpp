@@ -50,6 +50,17 @@ Value Visitor_Eval::visit_unary(Expr_Unary const& unary) const {
         }
     }
 }
+
+double binary_value(Value const& val) {
+    if (holds_alternative<bool>(val)) {
+        return std::get<bool>(val) ? 1.0 : 0.0;
+    } else if (holds_alternative<std::monostate>(val)) {
+        return 0.0;
+    } else {
+        return std::get<double>(val);
+    }
+}
+
 Value Visitor_Eval::visit_binary(Expr_Binary const& binary) const {
     enum class EOperationKind { Arithmetic, StrConcat, Boolean };
     EOperationKind op_kind;
@@ -95,10 +106,30 @@ Value Visitor_Eval::visit_binary(Expr_Binary const& binary) const {
         const string right = std::get<string>(right_v);
 
         return left + right;
-    } else {
-        throw std::runtime_error("Unimplemented!");
+    } else if (op_kind == EOperationKind::Boolean) {
+        const double left = binary_value(left_v);
+        const double right = binary_value(right_v);
+
+        switch (binary.op) {
+        case Expr_Binary::EBinaryOperator::EqEq:
+            return left == right;
+        case Expr_Binary::EBinaryOperator::NotEq:
+            return left != right;
+        case Expr_Binary::EBinaryOperator::Less:
+            return left < right;
+        case Expr_Binary::EBinaryOperator::LessOrEq:
+            return left <= right;
+        case Expr_Binary::EBinaryOperator::Greater:
+            return left > right;
+        case Expr_Binary::EBinaryOperator::GreaterOrEq:
+            return left >= right;
+        default:
+            std::unreachable();
+            break;
+        }
     }
-    // Assuming either both are nums, or both are booleans
+
+    throw std::runtime_error("Unexpected control path");
 }
 Value Visitor_Eval::visit_grouping(Expr_Grouping const& grouping) const {
     return grouping.inner->accept(*this);
