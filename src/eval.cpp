@@ -1,4 +1,5 @@
 #include "eval.h"
+#include "parser.h"
 #include <expected>
 #include <stdexcept>
 #include <utility>
@@ -62,7 +63,7 @@ double binary_value(Value const& val) {
 }
 
 Value Visitor_Eval::visit_binary(Expr_Binary const& binary) const {
-    enum class EOperationKind { Arithmetic, StrConcat, Boolean };
+    enum class EOperationKind { Arithmetic, StrConcat, Cmp, Relation };
     EOperationKind op_kind;
 
     const Value left_v = binary.left->accept(*this);
@@ -81,8 +82,12 @@ Value Visitor_Eval::visit_binary(Expr_Binary const& binary) const {
     case Expr_Binary::EBinaryOperator::Div:
         op_kind = EOperationKind::Arithmetic;
         break;
+    case Expr_Binary::EBinaryOperator::EqEq:
+    case Expr_Binary::EBinaryOperator::NotEq:
+        op_kind = EOperationKind::Cmp;
+        break;
     default:
-        op_kind = EOperationKind::Boolean;
+        op_kind = EOperationKind::Relation;
     }
 
     if (op_kind == EOperationKind::Arithmetic) {
@@ -106,7 +111,40 @@ Value Visitor_Eval::visit_binary(Expr_Binary const& binary) const {
         const string right = std::get<string>(right_v);
 
         return left + right;
-    } else if (op_kind == EOperationKind::Boolean) {
+    } else if (op_kind == EOperationKind::Cmp) {
+        // They don't hold the same variant type
+        if (left_v.index() != right_v.index()) {
+            // Diff variants are always NOT equal
+            switch (binary.op) {
+            case Expr_Binary::EBinaryOperator::EqEq:
+                return false;
+            case Expr_Binary::EBinaryOperator::NotEq:
+                return true;
+            default:
+                std::unreachable();
+            }
+        } else {
+            // They hold the same variant type
+            if (holds_alternative<std::monostate>(left_v)) {
+                // monostates are always equal
+                switch (binary.op) {
+                case Expr_Binary::EBinaryOperator::EqEq:
+                    return true;
+                case Expr_Binary::EBinaryOperator::NotEq:
+                    return false;
+                default:
+                    std::unreachable();
+                }
+            } else if (holds_alternative<bool>(left_v)) {
+                return compare_values<bool>(binary.op, left_v, right_v);
+            } else if (holds_alternative<double>(left_v)) {
+                return compare_values<double>(binary.op, left_v, right_v);
+            } else if (holds_alternative<string>(left_v)) {
+                return compare_values<string>(binary.op, left_v, right_v);
+            }
+        }
+
+    } else if (op_kind == EOperationKind::Relation) {
         const double left = binary_value(left_v);
         const double right = binary_value(right_v);
 

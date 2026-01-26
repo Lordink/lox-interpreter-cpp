@@ -21,5 +21,18 @@ class Visitor_Eval : public Visitor<Value> {
     virtual Value visit_grouping(Expr_Grouping const& grouping) const override;
 };
 
+template <typename T>
+bool compare_values(Expr_Binary::EBinaryOperator op, Value const& left,
+                    Value const& right) {
+    switch (op) {
+    case Expr_Binary::EBinaryOperator::EqEq:
+        return std::get<T>(left) == std::get<T>(right);
+    case Expr_Binary::EBinaryOperator::NotEq:
+        return std::get<T>(left) != std::get<T>(right);
+    default:
+        std::unreachable();
+    }
+}
+
 std::expected<Value, string> evaluate(ExprPtr ast);
 } // namespace eval
