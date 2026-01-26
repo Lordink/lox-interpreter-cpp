@@ -1,6 +1,7 @@
 #include "eval.h"
 #include <expected>
 #include <stdexcept>
+#include <utility>
 #include <variant>
 
 using std::holds_alternative;
@@ -50,9 +51,38 @@ Value Visitor_Eval::visit_unary(Expr_Unary const& unary) const {
     }
 }
 Value Visitor_Eval::visit_binary(Expr_Binary const& binary) const {
+    bool is_arithmetic;
+    switch (binary.op) {
+    case Expr_Binary::EBinaryOperator::Plus:
+    case Expr_Binary::EBinaryOperator::Minus:
+    case Expr_Binary::EBinaryOperator::Mul:
+    case Expr_Binary::EBinaryOperator::Div:
+        is_arithmetic = true;
+        break;
+    default:
+        is_arithmetic = false;
+    }
 
-    throw std::logic_error("Unimplemented");
-    return std::monostate{};
+    if (is_arithmetic) {
+        const double left = std::get<double>(binary.left->accept(*this));
+        const double right = std::get<double>(binary.right->accept(*this));
+
+        switch (binary.op) {
+        case Expr_Binary::EBinaryOperator::Plus:
+            return left + right;
+        case Expr_Binary::EBinaryOperator::Minus:
+            return left - right;
+        case Expr_Binary::EBinaryOperator::Mul:
+            return left * right;
+        case Expr_Binary::EBinaryOperator::Div:
+            return left / right;
+        default:
+            std::unreachable();
+        }
+    } else {
+        throw std::runtime_error("Unimplemented!");
+    }
+    // Assuming either both are nums, or both are booleans
 }
 Value Visitor_Eval::visit_grouping(Expr_Grouping const& grouping) const {
     return grouping.inner->accept(*this);
