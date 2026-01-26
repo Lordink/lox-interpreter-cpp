@@ -21,6 +21,5 @@ class Visitor_Eval : public Visitor<Value> {
     virtual Value visit_grouping(Expr_Grouping const& grouping) const override;
 };
 
-[[nodiscard]]
 std::expected<Value, string> evaluate(ExprPtr ast);
 } // namespace eval

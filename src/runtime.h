@@ -20,7 +20,7 @@ static void print_value(Value const& val) {
             using std::is_same_v;
 
             if constexpr (is_same_v<T, monostate>) {
-                println("void");
+                println("nil");
             } else {
                 println("{}", var);
             }
