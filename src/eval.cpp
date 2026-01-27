@@ -89,12 +89,23 @@ ValueResult Visitor_Eval::visit_binary(Expr_Binary const& binary) const {
     switch (binary.op) {
     case Expr_Binary::EBinaryOperator::Plus:
         // Both are strings
-        if (holds_alternative<string>(left_v) &&
-            holds_alternative<string>(right_v)) {
+        if (both_values_are<string>(left_v, right_v)) {
             op_kind = EOperationKind::StrConcat;
             break;
+        } else if (both_values_are<double>(left_v, right_v)) {
+            op_kind = EOperationKind::Arithmetic;
+            break;
+        } else {
+            return std::unexpected(
+                "Operands must be two numbers or two strings");
         }
     case Expr_Binary::EBinaryOperator::Minus:
+        if (both_values_are<double>(left_v, right_v)) {
+            op_kind = EOperationKind::Arithmetic;
+            break;
+        } else {
+            return std::unexpected("Operands must be numbers");
+        }
     case Expr_Binary::EBinaryOperator::Mul:
     case Expr_Binary::EBinaryOperator::Div:
         op_kind = EOperationKind::Arithmetic;

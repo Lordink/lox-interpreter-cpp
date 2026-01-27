@@ -7,6 +7,7 @@
 #include "runtime.h"
 #include <expected>
 #include <string>
+#include <variant>
 
 namespace eval {
 using std::expected;
@@ -25,6 +26,7 @@ class Visitor_Eval : public Visitor<ValueResult> {
 };
 
 template <typename T>
+[[nodiscard]]
 bool compare_values(Expr_Binary::EBinaryOperator op, Value const& left,
                     Value const& right) {
     switch (op) {
@@ -35,6 +37,12 @@ bool compare_values(Expr_Binary::EBinaryOperator op, Value const& left,
     default:
         std::unreachable();
     }
+}
+
+template <typename T>
+[[nodiscard]]
+bool both_values_are(Value const& left, Value const& right) {
+    return std::holds_alternative<T>(left) && std::holds_alternative<T>(right);
 }
 
 std::expected<Value, string> evaluate(ExprPtr ast);
