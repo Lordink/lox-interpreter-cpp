@@ -108,6 +108,10 @@ ValueResult Visitor_Eval::visit_binary(Expr_Binary const& binary) const {
     }
 
     if (op_kind == EOperationKind::Arithmetic) {
+        if (!holds_alternative<double>(left_v) ||
+            !holds_alternative<double>(right_v)) {
+            return std::unexpected("Operands must be numbers.");
+        }
         const double left = std::get<double>(left_v);
         const double right = std::get<double>(right_v);
 
