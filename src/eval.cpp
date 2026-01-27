@@ -1,5 +1,6 @@
 #include "eval.h"
 #include "parser.h"
+#include "util.h"
 #include <expected>
 #include <stdexcept>
 #include <utility>
@@ -76,14 +77,10 @@ ValueResult Visitor_Eval::visit_binary(Expr_Binary const& binary) const {
     EOperationKind op_kind;
 
     const ValueResult res_left_v = binary.left->accept(*this);
-    if (!res_left_v) {
-        return res_left_v.error();
-    }
+    UNWRAP(res_left_v);
     const Value left_v = res_left_v.value();
     const ValueResult res_right_v = binary.right->accept(*this);
-    if (!res_right_v) {
-        return res_right_v.error();
-    }
+    UNWRAP(res_right_v);
     const Value right_v = res_right_v.value();
 
     switch (binary.op) {
