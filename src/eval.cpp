@@ -174,6 +174,12 @@ ValueResult Visitor_Eval::visit_binary(Expr_Binary const& binary) const {
         }
 
     } else if (op_kind == EOperationKind::Relation) {
+        // We could be handling weak typing here,
+        // but per spec we only compare numbers
+        if (!both_values_are<double>(left_v, right_v)) {
+            return std::unexpected("Operands must be numbers.");
+        }
+
         const double left = binary_value(left_v);
         const double right = binary_value(right_v);
 
